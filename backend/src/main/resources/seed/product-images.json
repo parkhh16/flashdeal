@@ -1,0 +1,98 @@
+{
+  "kb-limited": [
+    "/images/products/kb-limited-1.jpg",
+    "/images/products/kb-limited-2.jpg",
+    "/images/products/kb-limited-3.jpg"
+  ],
+  "kb-silent-wireless": [
+    "/images/products/kb-silent-wireless-1.jpg",
+    "/images/products/kb-silent-wireless-2.jpg"
+  ],
+  "kb-gaming-tkl": [
+    "/images/products/kb-gaming-tkl-1.jpg",
+    "/images/products/kb-gaming-tkl-2.jpg"
+  ],
+  "kb-aluminum": [
+    "/images/products/kb-aluminum-1.jpg",
+    "/images/products/kb-aluminum-2.jpg"
+  ],
+  "kb-slim-bt": [
+    "/images/products/kb-slim-bt-1.jpg",
+    "/images/products/kb-slim-bt-2.jpg"
+  ],
+  "ms-vertical": [
+    "/images/products/ms-vertical-1.jpg"
+  ],
+  "ms-light-gaming": [
+    "/images/products/ms-light-gaming-1.jpg"
+  ],
+  "ms-silent": [
+    "/images/products/ms-silent-1.jpg",
+    "/images/products/ms-silent-2.jpg"
+  ],
+  "ms-trackball": [
+    "/images/products/ms-trackball-1.jpg",
+    "/images/products/ms-trackball-2.jpg",
+    "/images/products/ms-trackball-3.jpg"
+  ],
+  "mn-27-qhd": [
+    "/images/products/mn-27-qhd-1.jpg"
+  ],
+  "mn-24-office": [
+    "/images/products/mn-24-office-1.jpg",
+    "/images/products/mn-24-office-2.jpg"
+  ],
+  "mn-24-240": [
+    "/images/products/mn-24-240-1.jpg"
+  ],
+  "au-anc-headset": [
+    "/images/products/au-anc-headset-1.jpg",
+    "/images/products/au-anc-headset-2.jpg"
+  ],
+  "au-earbuds": [
+    "/images/products/au-earbuds-1.jpg"
+  ],
+  "au-desk-speaker": [
+    "/images/products/au-desk-speaker-1.jpg",
+    "/images/products/au-desk-speaker-2.jpg",
+    "/images/products/au-desk-speaker-3.jpg"
+  ],
+  "au-gaming-headset": [
+    "/images/products/au-gaming-headset-1.jpg",
+    "/images/products/au-gaming-headset-2.jpg"
+  ],
+  "au-anc-earbuds": [
+    "/images/products/au-anc-earbuds-1.jpg"
+  ],
+  "au-portable-speaker": [
+    "/images/products/au-portable-speaker-1.jpg",
+    "/images/products/au-portable-speaker-2.jpg",
+    "/images/products/au-portable-speaker-3.jpg"
+  ],
+  "ac-deskmat": [
+    "/images/products/ac-deskmat-1.jpg",
+    "/images/products/ac-deskmat-2.jpg"
+  ],
+  "ac-monitor-arm": [
+    "/images/products/ac-monitor-arm-1.jpg",
+    "/images/products/ac-monitor-arm-2.jpg"
+  ],
+  "ac-laptop-stand": [
+    "/images/products/ac-laptop-stand-1.jpg"
+  ],
+  "ac-keycaps": [
+    "/images/products/ac-keycaps-1.jpg",
+    "/images/products/ac-keycaps-2.jpg",
+    "/images/products/ac-keycaps-3.jpg"
+  ],
+  "ac-usb-hub": [
+    "/images/products/ac-usb-hub-1.jpg",
+    "/images/products/ac-usb-hub-2.jpg"
+  ],
+  "ms-8k": [
+    "/images/products/ms-8k-1.svg"
+  ],
+  "mn-32-4k": [
+    "/images/products/mn-32-4k-1.svg"
+  ]
+}
