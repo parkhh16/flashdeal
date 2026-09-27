@@ -1,0 +1,22 @@
+# build
+backend/build/
+backend/.gradle/
+backend/bin/
+frontend/node_modules/
+frontend/dist/
+*.log
+
+# ide
+.idea/
+.vscode/
+*.iml
+
+# env
+.env
+.env.*
+
+# local notes (개인 작업 메모, 로컬 환경 정보가 들어 있어 저장소에 올리지 않음)
+COMMITS.md
+PROGRESS.md
+COMMANDS.md
+docs/BLOG_DRAFT.md
