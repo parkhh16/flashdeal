@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="t">
+  <title id="t">8K 폴링 게이밍 마우스 일러스트</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1e27"/>
+      <stop offset="1" stop-color="#0d0f14"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3f4c"/>
+      <stop offset="1" stop-color="#1c1f27"/>
+    </linearGradient>
+    <linearGradient id="rgb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff6b3d"/>
+      <stop offset="0.5" stop-color="#c850ff"/>
+      <stop offset="1" stop-color="#3db8ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.55" r="0.45">
+      <stop offset="0" stop-color="#c850ff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#c850ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <ellipse cx="400" cy="430" rx="330" ry="330" fill="url(#glow)"/>
+  <ellipse cx="400" cy="705" rx="170" ry="22" fill="#000" opacity="0.45"/>
+  <!-- 마우스 몸체 (위에서 본 모습) -->
+  <path d="M400 110 C520 110 585 210 585 360 L585 520 C585 640 505 700 400 700 C295 700 215 640 215 520 L215 360 C215 210 280 110 400 110 Z" fill="url(#body)"/>
+  <!-- 좌우 버튼 분리선 -->
+  <path d="M400 110 L400 330" stroke="#0d0f14" stroke-width="6"/>
+  <path d="M225 330 C300 350 500 350 575 330" stroke="#0d0f14" stroke-width="5" fill="none"/>
+  <!-- 휠 -->
+  <rect x="384" y="175" width="32" height="90" rx="16" fill="#12141a" stroke="url(#rgb)" stroke-width="5"/>
+  <g stroke="#4a4f5c" stroke-width="3">
+    <line x1="392" y1="200" x2="408" y2="200"/><line x1="392" y1="220" x2="408" y2="220"/><line x1="392" y1="240" x2="408" y2="240"/>
+  </g>
+  <!-- RGB 라인 -->
+  <path d="M250 560 C300 640 500 640 550 560" stroke="url(#rgb)" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <!-- 사이드 버튼 -->
+  <rect x="200" y="380" width="22" height="48" rx="8" fill="#555b69"/>
+  <rect x="200" y="438" width="22" height="48" rx="8" fill="#555b69"/>
+  <text x="400" y="470" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="72" fill="#ffffff" opacity="0.92">8K</text>
+  <text x="400" y="510" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="24" letter-spacing="6" fill="#aab0bf">POLLING</text>
+</svg>

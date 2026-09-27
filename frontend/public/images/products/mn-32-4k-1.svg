@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="t">
+  <title id="t">32인치 4K 모니터 일러스트</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef1f5"/>
+      <stop offset="1" stop-color="#d9dee6"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="0.55" stop-color="#e8590c"/>
+      <stop offset="1" stop-color="#fcc419"/>
+    </linearGradient>
+    <linearGradient id="stand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b2f38"/>
+      <stop offset="0.5" stop-color="#4a505c"/>
+      <stop offset="1" stop-color="#2b2f38"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <!-- 스탠드 -->
+  <path d="M370 560 L430 560 L445 665 L355 665 Z" fill="url(#stand)"/>
+  <rect x="250" y="660" width="300" height="22" rx="11" fill="#2b2f38"/>
+  <ellipse cx="400" cy="690" rx="180" ry="10" fill="#000" opacity="0.12"/>
+  <!-- 베젤 + 화면 -->
+  <rect x="80" y="160" width="640" height="410" rx="14" fill="#16181d"/>
+  <rect x="94" y="174" width="612" height="370" rx="4" fill="url(#sky)"/>
+  <!-- 풍경 -->
+  <circle cx="520" cy="400" r="46" fill="#fff4d6" opacity="0.9"/>
+  <path d="M94 470 L220 360 L310 430 L420 330 L560 450 L706 380 L706 544 L94 544 Z" fill="#12213f" opacity="0.85"/>
+  <path d="M94 510 L200 450 L330 500 L470 440 L600 500 L706 470 L706 544 L94 544 Z" fill="#0b1428"/>
+  <rect x="94" y="544" width="612" height="12" fill="#16181d"/>
+  <circle cx="400" cy="561" r="3" fill="#69db7c"/>
+  <text x="400" y="118" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="56" fill="#16181d">4K UHD</text>
+  <text x="400" y="742" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="26" letter-spacing="4" fill="#5c6370">32" · 3840 × 2160</text>
+</svg>
