@@ -1,6 +1,5 @@
 export type Category = 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'AUDIO' | 'ACCESSORY'
 export type OrderStatus = 'PENDING_PAYMENT' | 'PAYING' | 'PAID' | 'EXPIRED' | 'CANCELLED'
-export type StockStrategy = 'NAIVE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'ATOMIC_UPDATE'
 export type DealStatus = 'NONE' | 'UPCOMING' | 'ONGOING' | 'SOLD_OUT' | 'ENDED'
 export type SortKey = 'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC' | 'DEADLINE'
 
@@ -31,7 +30,6 @@ export interface AiSearchResult {
   fallbackReason: string | null; parseMillis: number; products: Product[]; originalQuery: string | null
 }
 export interface PaymentResult { orderId: number; paymentKey: string; status: string; message: string }
-export interface Chaos { latencyMs: number; failureRate: number; declineRate: number; timeoutRate: number; failAfterPgApproval: boolean }
 export interface Mismatch { orderId: number; orderNo: string; orderStatus: string; orderAmount: number; approvedAmount: number }
 
 export interface ProductQuery {
@@ -111,15 +109,6 @@ export const api = {
   myOrders: () => request<Page<Order>>('GET', '/api/orders?size=20'),
   pay: (orderId: number, idempotencyKey: string) =>
     request<PaymentResult>('POST', `/api/orders/${orderId}/payment`, undefined, { 'Idempotency-Key': idempotencyKey }),
-  admin: {
-    strategy: () => request<{ strategy: StockStrategy }>('GET', '/api/admin/stock-strategy'),
-    setStrategy: (s: StockStrategy) => request<{ strategy: StockStrategy }>('PUT', `/api/admin/stock-strategy/${s}`),
-    chaos: () => request<Chaos>('GET', '/api/admin/chaos'),
-    setChaos: (c: Chaos) => request<Chaos>('PUT', '/api/admin/chaos', c),
-    reconcile: () => request<{ checked: number; approved: number; failed: number; stillUnknown: number }>('POST', '/api/admin/reconcile'),
-    expire: () => request<{ expired: number }>('POST', '/api/admin/expire'),
-    consistency: () => request<Mismatch[]>('GET', '/api/admin/consistency-report'),
-  },
 }
 
 // ── 활동 로그 / 관리자 ──
@@ -151,12 +140,6 @@ export interface ProductForm {
   dealQuantity: number | null; perUserLimit: number | null
 }
 export interface AdminOrder extends Order { userId: number; userName: string | null; paymentStatus: string | null }
-export interface ConcurrencyResult {
-  strategy: StockStrategy; initialStock: number; requests: number; success: number; outOfStock: number
-  conflicts: number; errors: number; finalStock: number; oversold: number; consistent: boolean
-  elapsedMs: number; throughput: number
-}
-
 export const adminApi = {
   activity: (f: ActivityFilter, page = 0, size = 30) =>
     request<Page<ActivityLog>>('GET', `/api/admin/activity${qs({ ...f, page, size })}`),
@@ -175,8 +158,8 @@ export const adminApi = {
   orders: (status?: string, userId?: number, page = 0) =>
     request<Page<AdminOrder>>('GET', `/api/admin/orders${qs({ status, userId, page, size: 20 })}`),
   cancelOrder: (id: number) => request<{ status: OrderStatus }>('POST', `/api/admin/orders/${id}/cancel`),
-  concurrencyTest: (stock: number, requests: number) =>
-    request<ConcurrencyResult>('POST', '/api/admin/tools/concurrency-test', { stock, requests }),
+  /** PAID 주문의 금액과 승인된 결제 합계가 어긋나는 건 */
+  consistency: () => request<Mismatch[]>('GET', '/api/admin/consistency-report'),
 }
 
 export const myActivity = (userId: number) => request<MyActivity>('GET', `/api/users/${userId}/activity`)

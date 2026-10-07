@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminApi, type AdminOrder, type OrderStatus, type UserOption } from '../../api'
+import { adminApi, type AdminOrder, type Mismatch, type OrderStatus, type UserOption } from '../../api'
 import { useApp } from '../../context/AppContext'
 import { won } from '../../format'
 
@@ -22,6 +22,9 @@ export function AdminOrdersPage() {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [busy, setBusy] = useState<number | null>(null)
+  const [mismatches, setMismatches] = useState<Mismatch[] | null>(null)
+
+  const checkConsistency = () => adminApi.consistency().then(r => setMismatches(r.data)).catch(fail)
 
   useEffect(() => { adminApi.users().then(r => setUsers(r.data)).catch(fail) }, [])
 
@@ -68,7 +71,17 @@ export function AdminOrdersPage() {
           </select>
         </label>
         <span className="muted">총 {total}건</span>
+        <button className="ghost small" onClick={checkConsistency}
+                title="결제 완료 주문의 금액과 승인된 결제 금액 합계를 비교합니다">정합성 점검</button>
       </div>
+      {mismatches && (
+        mismatches.length === 0
+          ? <div className="result-box good"><strong>✓ 주문과 결제 금액 불일치 0건</strong></div>
+          : <div className="result-box bad">
+              <strong>✗ 불일치 {mismatches.length}건</strong>
+              <ul>{mismatches.map(m => <li key={m.orderId}>{m.orderNo} ({m.orderStatus}) 주문 {won(m.orderAmount)} / 승인 {won(m.approvedAmount)}</li>)}</ul>
+            </div>
+      )}
 
       {orders?.length === 0 && <div className="empty small"><p>조건에 맞는 주문이 없습니다.</p></div>}
       {orders && orders.length > 0 && (
@@ -92,7 +105,7 @@ export function AdminOrdersPage() {
                         {busy === o.id ? '처리 중…' : o.status === 'PAID' ? '환불·취소' : '취소'}
                       </button>
                     )}
-                    {o.status === 'PAYING' && <span className="muted" title="결제 결과를 모르는 상태라 취소할 수 없습니다. 테스트 실험실에서 결제 대사를 실행하세요.">대사 대기</span>}
+                    {o.status === 'PAYING' && <span className="muted" title="결제 결과를 모르는 상태라 취소할 수 없습니다. 10초마다 도는 결제 대사가 PG에 확인해서 확정합니다.">대사 대기</span>}
                   </td>
                 </tr>
               ))}
