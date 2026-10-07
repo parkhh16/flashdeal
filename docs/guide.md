@@ -35,7 +35,7 @@ npm run dev
 | http://localhost:5173 | 쇼핑몰 (카테고리, 상품 상세, AI 검색) |
 | http://localhost:5173/me | 내 활동 (주문·결제, 최근 검색어, 최근 본 상품) |
 | http://localhost:5173/login · /signup · /me/account | 로그인, 회원가입, 계정 설정 (모든 기기 로그아웃, 탈퇴) |
-| http://localhost:5173/admin | 관리자 (대시보드, 활동 로그, 회원, 상품, 주문, 테스트 실험실) |
+| http://localhost:5173/admin | 관리자 (대시보드, 활동 로그, 회원, 상품, 주문) |
 | http://localhost:8080/swagger-ui.html | API 문서 |
 | http://localhost:8080/actuator/health | 헬스체크 |
 
@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 69개, H2 (약 2분)
+./gradlew test                                          # 전체 72개, H2 (약 2분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -77,9 +77,14 @@ cd ../frontend && npm run build                         # 타입 체크 + 빌드
 
 ## 4. 부하 테스트
 
-서버를 띄운 상태에서 실행합니다.
+서버를 띄운 상태에서 실행합니다. `--all`과 `--strategy`는 서버를 재시작하지 않고 재고 전략을 바꾸는 **개발 도구 API**를 쓰므로, 서버를 아래처럼 띄워야 합니다. 옵션 없이 실행하면 서버의 현재 전략으로 한 번 돕니다.
 
 ```bash
+# 개발 도구 켜기 (기본값은 꺼짐. 운영에서는 켜지 않습니다: NAIVE 전략은 초과 판매가 납니다)
+FLASHDEAL_DEV_TOOLS_ENABLED=true ./gradlew bootRun            # Git Bash
+$env:FLASHDEAL_DEV_TOOLS_ENABLED = "true"; .\gradlew bootRun    # PowerShell
+
+# 부하 테스트
 node loadtest/order-rush.mjs --all --stock 2000 --requests 2000   # 모든 요청이 재고 행을 두고 경합 (전략 비교용)
 node loadtest/order-rush.mjs --all                                # 재고 100 / 요청 2,000 (대부분 품절, 정합성 확인용)
 node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurrency 200
@@ -106,7 +111,8 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 
 | 키 | 기본값 | 설명 |
 |---|---|---|
-| `flashdeal.stock.strategy` | ATOMIC_UPDATE | 재고 차감 전략 (관리자 테스트 실험실에서 실행 중에 변경 가능) |
+| `flashdeal.stock.strategy` | ATOMIC_UPDATE | 재고 차감 전략 (개발 도구를 켜면 실행 중에도 API로 변경 가능) |
+| `flashdeal.dev-tools.enabled` | false | 부하 테스트용 재고 전략 전환 API를 엽니다 (`FLASHDEAL_DEV_TOOLS_ENABLED`). 운영에서는 false |
 | `flashdeal.order.reservation-ttl` | 10m | 결제 대기 재고 선점 시간 |
 | `flashdeal.pg.base-url` | (빈 값 = 내장 Mock PG) | 실제 PG URL (`PG_BASE_URL`) |
 | `flashdeal.pg.connect-timeout` / `read-timeout` | 1s / 2s | PG 타임아웃 |
@@ -167,15 +173,24 @@ curl -G localhost:8080/api/products/search --data-urlencode 'q=5만원 이하 �
 1. **쇼핑몰**: 사이드바에서 "오늘의 특가" → 마감이 임박한 헤드셋 상세 → 카운트다운, 한정 수량 진행바, "1인 1개" 확인
 2. **AI 검색**: "5만원 이하 무선 마우스" 검색 → "이렇게 이해했어요" 조건 칩 → 칩 하나를 빼면 다시 검색. "마으수"처럼 오타를 내면 "마우스"로 교정된 결과
 3. **1인 구매 제한**: user1로 헤드셋 1개 구매 → 한 번 더 구매하면 "1인 1개까지" 안내
-4. **관리자 → 테스트 실험실**
-   - 재고 전략을 "락 없음"으로 바꾸고 재고 100 / 동시 300으로 실행 → **초과 판매 발생** → "원자적 UPDATE"로 바꿔 다시 실행 → **0건**
-   - 멱등성: 같은 키로 5개 동시 요청 → 주문 1건
-   - 결제 장애 "PG 승인 후 우리 DB 장애"를 켜고 user1로 결제 → "결제 확인 중" → 관리자에서 결제 대사 실행 → **결제 완료로 복구** → 정합성 점검 0건 → 장애 설정을 "정상"으로 되돌리기
-5. **관리자 → 활동 로그**: 사용자 "김철수" 선택 → 방금 한 검색, 조회, 주문, 결제 흐름과 traceId 확인
-6. **관리자 → 주문 관리**: 결제 완료 주문 "환불·취소" → 결제 상태 "환불 완료", 재고 복구
-7. **JWT 즉시 무효화**: 브라우저 창 두 개(하나는 시크릿 창)에서 한쪽은 새로 가입한 회원, 한쪽은 admin으로 로그인 → 관리자 회원 관리에서 그 회원을 "정지" → 회원 창에서 페이지를 이동하면 토큰 만료를 기다리지 않고 **바로 "이용이 정지된 계정" 안내와 함께 로그인 화면으로** 이동
+4. **관리자 → 활동 로그**: 사용자 "김철수" 선택 → 방금 한 검색, 조회, 주문, 결제 흐름과 traceId 확인
+5. **관리자 → 주문 관리**: 결제 완료 주문 "환불·취소" → 결제 상태 "환불 완료", 재고 복구. "정합성 점검"을 누르면 결제 완료 주문과 승인 금액의 불일치가 0건인지 확인
+6. **JWT 즉시 무효화**: 브라우저 창 두 개(하나는 시크릿 창)에서 한쪽은 새로 가입한 회원, 한쪽은 admin으로 로그인 → 관리자 회원 관리에서 그 회원을 "정지" → 회원 창에서 페이지를 이동하면 토큰 만료를 기다리지 않고 **바로 "이용이 정지된 계정" 안내와 함께 로그인 화면으로** 이동
 
-## 9. 커밋 컨벤션
+## 9. 동시성·장애 시나리오 재현
+
+동시성과 결제 장애는 화면에서 버튼으로 시연하지 않고 **자동 테스트**로 재현합니다. 실제 서비스 코드 경로(`OrderFacade` → `OrderService`, `PaymentService`)를 그대로 호출합니다.
+
+| 확인하고 싶은 것 | 실행 | 기대 결과 |
+|---|---|---|
+| 락이 없으면 초과 판매가 나고, 나머지 전략은 0건 | `./gradlew test --tests "*StockConcurrencyTest"` | NAIVE만 초과 판매. 비교표는 `backend/build/test-results/test/TEST-com.flashdeal.order.StockConcurrencyTest.xml`의 system-out |
+| 따닥 클릭: 같은 키로 20건 동시 주문 | `./gradlew test --tests "*OrderApiTest"` | 주문 1건 |
+| 1인 구매 제한 (같은 사용자의 동시 주문 포함) | `./gradlew test --tests "*PurchaseRuleTest"` | 한도만큼만 성공 |
+| 결제 장애 4종 (카드 거절, PG 응답 지연, PG 5xx, 승인 후 우리 DB 장애) | `./gradlew test --tests "*PaymentFailureScenarioTest"` | 이중 결제 없음, 대사로 PAID 복구, 정합성 불일치 0건 |
+| 취소·환불, 재고 증감 조정 | `./gradlew test --tests "*AdminFeaturesTest"` | PG 환불 성공 시에만 취소, 재고는 실물 수와 일치 |
+| 실제 HTTP 경로에서 전략별 처리량·지연 | 위 "부하 테스트" | TPS, p95, p99, 초과 판매 건수 |
+
+## 10. 커밋 컨벤션
 
 `feat(scope): …`, `fix(scope): …`, `refactor: …`, `test: …`, `ci: …`, `docs: …`, `chore: …`
 

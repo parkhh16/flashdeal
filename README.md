@@ -13,7 +13,7 @@
 - 따닥 클릭, 네트워크 재전송, 외부 결제(PG) 장애가 있어도 **주문·결제·재고가 서로 일치**하게 합니다.
 - H2에서만 통과하는 코드가 아니라, **운영과 같은 DB(MySQL)에서 검증**합니다.
 - 기능 구현에서 끝내지 않고 **문제 재현 → 원인 분석 → 해결 → 수치 확인** 과정을 문서로 남깁니다.
-- 관리자 화면, 활동 로그, 요청 추적(traceId), 장애 주입 도구처럼 **운영에 필요한 도구**까지 만듭니다.
+- 관리자 화면, 활동 로그, 요청 추적(traceId), 정합성 점검처럼 **운영에 필요한 도구**까지 만듭니다. 동시성과 장애 시나리오는 시연용 화면 대신 자동 테스트로 남깁니다.
 
 <br>
 
@@ -28,7 +28,7 @@
 | Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 단일 서버라 로컬 캐시로 충분 |
 | AI | Claude API (Anthropic Java SDK, Structured Outputs) | 응답을 JSON Schema로 강제해서 자유 텍스트 파싱 실패를 없앰. 장애 시 규칙 기반 파서로 폴백 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
-| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions, Docker Compose | 테스트 69개를 H2와 MySQL 양쪽에서 실행 |
+| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions, Docker Compose | 테스트 72개를 H2와 MySQL 양쪽에서 실행 |
 | (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)) |
 
 <br>
@@ -78,7 +78,7 @@
 - **외부 결제 호출은 트랜잭션 밖에서**: PG 지연이 DB 커넥션 고갈로 번지지 않게. 타임아웃은 실패가 아니라 "모름(UNKNOWN)"으로 두고 대사 배치로 확정
 - **돈과 재고가 걸린 순서를 지킴**: 결제 결과를 모르는 주문은 만료·취소 대상에서 제외, 환불은 PG 환불이 성공한 뒤에만 우리 쪽 상태 변경
 - **재고는 덮어쓰지 않고 증감으로**: 관리자 조정과 재고 복구는 `stock = stock + :delta`. 가용 재고와 결제 대기 수량을 따로 표시
-- **테스트는 운영과 같은 DB에서도**: 같은 테스트 69개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **테스트는 운영과 같은 DB에서도**: 같은 테스트 72개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
 - **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), LLM 장애 시 규칙 기반 폴백
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
 
@@ -107,7 +107,7 @@ flowchart LR
     API --> IDEM[(idempotency_record<br/>UNIQUE user+key)]
     API --> ORDER[주문/재고<br/>상태 머신]
     ORDER --> DB[(MySQL / H2<br/>Flyway)]
-    API -->|트랜잭션 밖 HTTP<br/>timeout·retry| PG[Mock PG<br/>장애 주입 가능]
+    API -->|트랜잭션 밖 HTTP<br/>timeout·retry| PG[Mock PG<br/>장애는 테스트에서 주입]
     RECON[대사 스케줄러 10s] -->|조회| PG
     RECON --> DB
     EXP[만료 스케줄러 5s] -->|재고 복구| DB
@@ -176,8 +176,7 @@ erDiagram
 | 상품 상세 | `/products/:id` | 이미지 갤러리, 할인율, 오픈/마감 카운트다운, 한정 수량 진행바, 1인 구매 제한, 스펙 표 |
 | 로그인 · 회원가입 | `/login`, `/signup` | 아이디/이메일 로그인, 5회 실패 시 잠금, 아이디 중복 확인 |
 | 내 활동 · 계정 | `/me`, `/me/account` | 주문·결제 내역, 최근 검색어, 최근 본 상품, 모든 기기 로그아웃, 회원 탈퇴 |
-| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품·특가 관리(재고 입고/출고), 주문 관리(취소·환불) |
-| 테스트 실험실 | `/admin/lab` | 재고 전략 전환, 동시성 테스트, 멱등성 테스트, 결제 장애 주입, 대사·만료 즉시 실행, 정합성 점검 |
+| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품·특가 관리(재고 입고/출고), 주문 관리(취소·환불, 정합성 점검) |
 
 ### 역할별 권한 (서버에서 검사)
 
@@ -216,11 +215,8 @@ erDiagram
 | GET / POST / PUT / PATCH | `/api/admin/products`, `/{id}`, `/{id}/active` | ADMIN | 상품·특가 관리, 판매 중지 |
 | POST | `/api/admin/products/{id}/stock-adjustments` | ADMIN | 재고 조정 `{delta, reason}` (입고 +N / 출고 -N) |
 | GET / POST | `/api/admin/orders`, `/api/admin/orders/{id}/cancel` | ADMIN | 주문 조회, 취소(환불) |
-| GET / PUT | `/api/admin/stock-strategy`, `/api/admin/stock-strategy/{type}` | ADMIN | 재고 전략 조회 / 전환 |
-| POST | `/api/admin/tools/concurrency-test` | ADMIN | 동시성 테스트 |
-| GET / PUT / DELETE | `/api/admin/chaos` | ADMIN | Mock PG 장애 주입 |
-| POST | `/api/admin/reconcile`, `/api/admin/expire` | ADMIN | 결제 대사, 만료 정리 즉시 실행 |
 | GET | `/api/admin/consistency-report` | ADMIN | 주문 ↔ 결제 정합성 리포트 |
+| GET / PUT | `/api/admin/stock-strategy`, `/api/admin/stock-strategy/{type}` | ADMIN | 재고 전략 조회 / 전환. **개발 도구 플래그를 켠 경우에만 존재** (`flashdeal.dev-tools.enabled`, 기본값 꺼짐). 부하 테스트용 |
 
 </details>
 
@@ -268,15 +264,15 @@ backend/src/main/java/com/flashdeal
 ├── product/       상품, 카테고리, 필터·정렬, stock/ 재고 차감 전략 4가지
 ├── order/         상태 머신, 주문 생성(재시도 Facade), 1인 제한, 만료 스케줄러, 취소
 ├── payment/       PG 클라이언트(타임아웃·재시도·환불), 트랜잭션 분리, 대사 배치
-├── mockpg/        가짜 PG 서버 + 장애 주입 설정
+├── mockpg/        가짜 PG 서버 + 장애 설정 (테스트가 코드에서 바꿈)
 ├── idempotency/   Idempotency-Key 처리
 ├── activity/      활동 로그 필터, 비동기 배치 적재, 조회 API
 ├── ai/            Claude 질의 파서, 규칙 기반 폴백, 캐시, 오타 교정
-├── admin/         관리자 API(상품·주문·회원·재고), 동시성 테스트 도구
+├── admin/         관리자 API(상품·주문·회원·재고·정합성), 개발 도구(플래그, 기본 꺼짐)
 └── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터
 backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V4)
 frontend/src
-├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문·실험실)
+├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문)
 └── components/    헤더, 카테고리 사이드바, 상품 카드, 이미지
 docs/issues/       기술적 이슈별 문제 → 원인 → 해결 → 결과
 docs/guide.md      실행 가이드
