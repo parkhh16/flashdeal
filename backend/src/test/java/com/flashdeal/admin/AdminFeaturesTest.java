@@ -46,7 +46,6 @@ class AdminFeaturesTest {
     @Autowired OrderRepository orderRepository;
     @Autowired ProductRepository productRepository;
     @Autowired ProductQueryService productQueryService;
-    @Autowired ConcurrencyTestTool concurrencyTestTool;
     @Autowired AdminStockService adminStockService;
     @Autowired PlatformTransactionManager txManager;
     @Autowired JdbcTemplate jdbc;
@@ -100,21 +99,6 @@ class AdminFeaturesTest {
         assertThatThrownBy(() -> cancelService.cancel(o.id()))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.INVALID_ORDER_STATUS);
         assertThat(fixtures.stockOf(product.getId())).isEqualTo(9);
-    }
-
-    @Test
-    @DisplayName("동시성 테스트 도구: 재고 50에 150건 → 성공 50 / 품절 100 / 최종 재고 0, 임시 데이터는 정리된다")
-    void concurrencyTool() {
-        long productsBefore = productRepository.count();
-
-        ConcurrencyTestTool.Result r = concurrencyTestTool.run(50, 150);
-
-        assertThat(r.success()).isEqualTo(50);
-        assertThat(r.outOfStock()).isEqualTo(100);
-        assertThat(r.finalStock()).isZero();
-        assertThat(r.consistent()).isTrue();
-        assertThat(productRepository.count()).isEqualTo(productsBefore);
-        assertThat(fixtures.count("orders")).isZero();
     }
 
     @Test

@@ -3,7 +3,8 @@ package com.flashdeal.mockpg;
 import org.springframework.stereotype.Component;
 
 /**
- * 장애 주입 설정. 관리자 API(/api/admin/chaos)로 런타임에 바꾼다.
+ * Mock PG 장애 주입 설정. 결제 장애 시나리오 테스트(PaymentFailureScenarioTest)가 코드에서 바꾼다.
+ * 운영 API로는 노출하지 않는다.
  *
  * @param latencyMs              PG 응답 지연
  * @param failureRate            PG가 처리하지 않고 500을 반환할 확률

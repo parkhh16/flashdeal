@@ -116,7 +116,7 @@ class OrderApiTest {
                 .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(rest.getForEntity("/api/orders/" + orderId, JsonNode.class).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(rest.exchange("/api/admin/chaos", HttpMethod.GET, new HttpEntity<>(auth(owner)), JsonNode.class)
+        assertThat(rest.exchange("/api/admin/orders", HttpMethod.GET, new HttpEntity<>(auth(owner)), JsonNode.class)
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 

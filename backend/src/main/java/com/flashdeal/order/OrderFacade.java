@@ -26,13 +26,9 @@ public class OrderFacade {
     private final OrderService orderService;
 
     public OrderResponse create(Long userId, CreateOrderRequest request) {
-        return create(userId, request, false);
-    }
-
-    public OrderResponse create(Long userId, CreateOrderRequest request, boolean allowInactive) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                return orderService.create(userId, request, allowInactive);
+                return orderService.create(userId, request);
             } catch (StockConflictException e) {
                 backoff(attempt);
             }

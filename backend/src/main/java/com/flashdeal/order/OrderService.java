@@ -56,22 +56,13 @@ public class OrderService {
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderResponse create(Long userId, CreateOrderRequest request) {
-        return create(userId, request, false);
-    }
-
-    /**
-     * @param allowInactive 관리자 동시성 테스트 도구 전용. 판매 중지 상태의 테스트 상품으로 주문해서
-     *                      실험 중에도 실제 상품 목록에는 노출되지 않게 한다. 사용자 API에서는 항상 false
-     */
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public OrderResponse create(Long userId, CreateOrderRequest request, boolean allowInactive) {
         // 같은 상품이 여러 줄이면 합친다. productId 오름차순으로 락을 잡아서
         // 두 주문이 서로 다른 순서로 행 락을 잡다가 생기는 데드락을 예방한다.
         Map<Long, Integer> lines = new TreeMap<>();
         request.items().forEach(l -> lines.merge(l.productId(), l.quantity(), Integer::sum));
 
         LocalDateTime now = LocalDateTime.now(clock);
-        validatePurchaseRules(userId, lines, now, allowInactive);
+        validatePurchaseRules(userId, lines, now);
 
         Order order = Order.create(userId, now.plus(properties.order().reservationTtl()));
         lines.forEach((productId, quantity) -> {
@@ -91,9 +82,9 @@ public class OrderService {
      * 사용자 행에 락을 걸어 같은 사용자의 주문만 줄 세운다. 락 범위가 상품이 아니라 사용자라서 핫스팟이 생기지 않고,
      * 락 순서가 항상 사용자 → 상품(id 오름차순)이라 데드락도 없다.
      */
-    private void validatePurchaseRules(Long userId, Map<Long, Integer> lines, LocalDateTime now, boolean allowInactive) {
+    private void validatePurchaseRules(Long userId, Map<Long, Integer> lines, LocalDateTime now) {
         List<PurchaseRule> rules = productRepository.findPurchaseRules(lines.keySet());
-        if (rules.size() != lines.size() || (!allowInactive && rules.stream().anyMatch(r -> !r.active()))) {
+        if (rules.size() != lines.size() || rules.stream().anyMatch(r -> !r.active())) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
         }
         rules.forEach(rule -> rule.checkSalePeriod(now));
