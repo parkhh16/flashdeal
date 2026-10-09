@@ -3,6 +3,7 @@ package com.flashdeal.admin;
 import com.flashdeal.admin.AdminCatalogService.*;
 import com.flashdeal.order.OrderCancelService;
 import com.flashdeal.order.OrderStatus;
+import com.flashdeal.payment.PaymentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/** 운영용 관리자 API: 상품/특가 관리, 주문 관리(취소·환불), 동시성 실험 도구. /api/admin/** 는 ROLE_ADMIN만 접근 */
+/** 운영용 관리자 API: 상품/특가 관리, 주문 관리(취소·환불), 정합성 점검. /api/admin/** 는 ROLE_ADMIN만 접근 */
 @Tag(name = "Admin")
 @SecurityRequirement(name = "bearer")
 @RestController
@@ -24,8 +25,8 @@ public class AdminManagementController {
 
     private final AdminCatalogService catalogService;
     private final OrderCancelService orderCancelService;
-    private final ConcurrencyTestTool concurrencyTestTool;
     private final AdminStockService adminStockService;
+    private final PaymentRepository paymentRepository;
 
     public record StockAdjustment(int delta, String reason) {
     }
@@ -77,9 +78,9 @@ public class AdminManagementController {
         return Map.of("status", orderCancelService.cancel(id));
     }
 
-    @Operation(summary = "동시성 테스트", description = "재고 N개 임시 상품에 M건 동시 주문 → 성공/품절/최종 재고 정합성. 현재 재고 전략으로 실행")
-    @PostMapping("/tools/concurrency-test")
-    public ConcurrencyTestTool.Result concurrencyTest(@RequestBody Map<String, Integer> body) {
-        return concurrencyTestTool.run(body.getOrDefault("stock", 100), body.getOrDefault("requests", 200));
+    @Operation(summary = "정합성 리포트", description = "PAID 주문과 승인 결제 금액이 불일치하는 건을 조회한다")
+    @GetMapping("/consistency-report")
+    public List<PaymentRepository.MismatchRow> consistency() {
+        return paymentRepository.findMismatches();
     }
 }

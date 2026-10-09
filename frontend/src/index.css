@@ -183,9 +183,6 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-siz
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .panel h3 { margin: 0 0 4px; font-size: 16px; }
 .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
-.options { display: grid; gap: 6px; margin: 12px 0; }
-.options label { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; flex-wrap: wrap; }
-.options label.selected { border-color: var(--accent); background: var(--accent-weak); }
 .json { background: var(--surface-2); padding: 10px; border-radius: 8px; font-size: 12px; overflow-x: auto; }
 .num { width: 80px; }
 .result { font-weight: 600; margin: 10px 0 0; }

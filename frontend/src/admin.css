@@ -93,15 +93,6 @@ button.danger { color: var(--bad); border-color: var(--bad); }
 .form-grid .span2 { grid-column: span 2; }
 textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; resize: vertical; }
 
-.lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.lab h3 { font-size: 17px; }
-.lab-guide { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 10px 0 14px; font-size: 13px; padding: 12px; background: var(--surface-2); border-radius: 8px; }
-.lab-guide dt { color: var(--muted); font-weight: 600; }
-.lab-guide dd { margin: 0; }
-.lab-guide ol { margin: 0; padding-left: 18px; }
-.lab-controls { display: flex; flex-direction: column; gap: 10px; }
-.lab .options { margin: 0; }
-.lab .options label { align-items: flex-start; }
 .inline-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .inline-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .inline-form input { width: 110px; }
@@ -112,17 +103,6 @@ textarea { font: inherit; color: var(--text); background: var(--surface); border
 .result-box.bad strong { color: var(--bad); }
 .result-box ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
 .result-box p { margin: 6px 0 0; }
-.result-nums { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 13px; color: var(--muted); }
-.result-nums b { color: var(--text); font-variant-numeric: tabular-nums; }
-.chaos-state { padding: 10px 14px; border-radius: 8px; font-size: 14px; }
-.chaos-state.good { background: var(--good-weak); color: var(--good); }
-.chaos-state.warn { background: var(--warn-weak); color: var(--warn); }
-.chaos-state.bad { background: var(--bad-weak); color: var(--bad); }
-.chaos-state.info { background: var(--surface-2); }
-.preset-list { display: grid; gap: 6px; }
-.preset { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--surface); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
-.preset:hover { border-color: var(--accent); }
-.preset span { color: var(--muted); font-size: 12px; font-weight: 400; }
 
 /* ── my activity ── */
 .me-section { margin-bottom: 32px; }
@@ -131,13 +111,12 @@ textarea { font: inherit; color: var(--text); background: var(--surface); border
 a.chip:hover { border-color: var(--accent); }
 
 @media (max-width: 1100px) {
-  .lab-grid, .two-col { grid-template-columns: 1fr; }
+  .two-col { grid-template-columns: 1fr; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span2 { grid-column: auto; }
-  .lab-guide { grid-template-columns: 1fr; }
   .feed li { grid-template-columns: 44px minmax(0, 1fr); }
   .feed-who, .feed time { display: none; }
 }

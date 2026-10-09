@@ -2,9 +2,12 @@
 /**
  * 선착순 주문 폭주 부하 테스트 (의존성 없음, Node 18+)
  *
- *   node loadtest/order-rush.mjs                  # 현재 전략으로 1회
+ *   node loadtest/order-rush.mjs                  # 서버의 현재 전략으로 1회
  *   node loadtest/order-rush.mjs --all            # 4개 전략 전부 비교
  *   node loadtest/order-rush.mjs --requests 3000 --concurrency 200 --stock 100
+ *
+ * --all / --strategy 는 서버를 재시작하지 않고 재고 전략을 바꾸는 개발 도구 API를 쓴다.
+ * 서버를 FLASHDEAL_DEV_TOOLS_ENABLED=true 로 띄워야 한다 (기본값은 꺼짐, 운영에서는 켜지 않는다).
  *
  * 흐름: 관리자 로그인 → 사용자 N명 가입 → (전략마다) 전략 전환 → 전용 테스트 상품 생성 → 동시 주문 폭주 → 정합성 검증 → 테스트 상품 판매 중지
  *
@@ -75,7 +78,9 @@ async function createProduct(adminToken, label) {
 
 async function run(adminToken, tokens, strategy) {
   if (strategy) await call('PUT', `/api/admin/stock-strategy/${strategy}`, { token: adminToken })
-  const current = (await call('GET', '/api/admin/stock-strategy', { token: adminToken })).data.strategy
+  const current = devTools
+    ? (await call('GET', '/api/admin/stock-strategy', { token: adminToken })).data.strategy
+    : '서버 설정값'
   const PRODUCT_ID = await createProduct(adminToken, current)
 
   const latencies = []
@@ -111,9 +116,20 @@ async function run(adminToken, tokens, strategy) {
 }
 
 const admin = await call('POST', '/api/auth/login', { body: { loginId: args.adminId ?? 'admin', password: args.adminPassword ?? 'admin' } })
-if (admin.status !== 200) {
-  console.error('관리자 로그인 실패. 서버가 떠 있는지 확인하세요:', BASE)
+/** 메시지를 출력하고 종료한다. 열린 소켓이 정리될 시간을 줘서 Windows의 libuv 종료 경고를 피한다 */
+async function die(...lines) {
+  lines.forEach(l => console.error(l))
+  await new Promise(r => setTimeout(r, 100))
   process.exit(1)
+}
+
+if (admin.status !== 200) {
+  await die('관리자 로그인 실패. 서버가 떠 있는지 확인하세요: ' + BASE)
+}
+const devTools = (await call('GET', '/api/admin/stock-strategy', { token: admin.data.accessToken })).status === 200
+if (!devTools && STRATEGIES.some(Boolean)) {
+  await die('재고 전략을 바꾸는 개발 도구 API가 꺼져 있습니다 (--all / --strategy 사용 불가).',
+    '서버를 FLASHDEAL_DEV_TOOLS_ENABLED=true 로 다시 띄우거나, 옵션 없이 서버의 현재 전략으로 실행하세요.')
 }
 console.log(`사용자 ${USERS}명 준비 중...`)
 const tokens = await prepareUsers()
@@ -126,4 +142,4 @@ const rows = []
 for (const s of STRATEGIES) rows.push(await run(admin.data.accessToken, tokens, s))
 console.table(rows)
 
-await call('PUT', '/api/admin/stock-strategy/ATOMIC_UPDATE', { token: admin.data.accessToken })
+if (devTools) await call('PUT', '/api/admin/stock-strategy/ATOMIC_UPDATE', { token: admin.data.accessToken })
