@@ -153,13 +153,82 @@ erDiagram
     product ||--o{ order_item : "product_id (스냅샷)"
     orders ||--o{ payment : "order_id"
 
-    users { bigint id PK; varchar login_id UK "탈퇴 시 NULL"; varchar email UK; varchar password; varchar name; varchar role; varchar status "ACTIVE/SUSPENDED/WITHDRAWN"; int token_version "JWT 무효화"; int failed_login_count; datetime locked_until }
-    product { bigint id PK; varchar name; varchar category; varchar sub_category; bigint price; bigint original_price; int stock; int sold_count; bigint version; datetime deal_start_at; datetime deal_end_at; int deal_quantity; int per_user_limit; boolean active; varchar specs "JSON"; varchar images "JSON" }
-    orders { bigint id PK; varchar order_no UK; bigint user_id; varchar status; bigint total_amount; datetime expires_at; bigint version }
-    order_item { bigint id PK; bigint order_id FK; bigint product_id; varchar product_name "스냅샷"; bigint unit_price "스냅샷"; int quantity }
-    payment { bigint id PK; bigint order_id; varchar payment_key UK "PG 멱등 키"; bigint amount; varchar status; varchar pg_transaction_id; bigint version }
-    idempotency_record { bigint id PK; bigint user_id; varchar idempotency_key; varchar request_hash; varchar status; int response_status; varchar response_body }
-    activity_log { bigint id PK; bigint user_id; varchar event_type; varchar method; varchar target; int status_code; int latency_ms; varchar request_id; varchar detail "JSON" }
+    users {
+        bigint id PK
+        varchar login_id UK "탈퇴 시 NULL"
+        varchar email UK
+        varchar password
+        varchar name
+        varchar role
+        varchar status "ACTIVE/SUSPENDED/WITHDRAWN"
+        int token_version "JWT 무효화"
+        int failed_login_count
+        datetime locked_until
+    }
+    product {
+        bigint id PK
+        varchar name
+        varchar category
+        varchar sub_category
+        bigint price
+        bigint original_price
+        int stock
+        int sold_count
+        bigint version
+        datetime deal_start_at
+        datetime deal_end_at
+        int deal_quantity
+        int per_user_limit
+        boolean active
+        varchar specs "JSON"
+        varchar images "JSON"
+    }
+    orders {
+        bigint id PK
+        varchar order_no UK
+        bigint user_id
+        varchar status
+        bigint total_amount
+        datetime expires_at
+        bigint version
+    }
+    order_item {
+        bigint id PK
+        bigint order_id FK
+        bigint product_id
+        varchar product_name "스냅샷"
+        bigint unit_price "스냅샷"
+        int quantity
+    }
+    payment {
+        bigint id PK
+        bigint order_id
+        varchar payment_key UK "PG 멱등 키"
+        bigint amount
+        varchar status
+        varchar pg_transaction_id
+        bigint version
+    }
+    idempotency_record {
+        bigint id PK
+        bigint user_id
+        varchar idempotency_key
+        varchar request_hash
+        varchar status
+        int response_status
+        varchar response_body
+    }
+    activity_log {
+        bigint id PK
+        bigint user_id
+        varchar event_type
+        varchar method
+        varchar target
+        int status_code
+        int latency_ms
+        varchar request_id
+        varchar detail "JSON"
+    }
 ```
 
 - `order_item`은 상품명과 가격을 **스냅샷**으로 저장합니다. 상품 가격이 바뀌어도 주문 내역은 그대로여야 하고, 목록 조회에 상품 조인이 필요 없어집니다.
