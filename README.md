@@ -28,7 +28,8 @@
 | Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 단일 서버라 로컬 캐시로 충분 |
 | AI | Claude API (Anthropic Java SDK, Structured Outputs) | 응답을 JSON Schema로 강제해서 자유 텍스트 파싱 실패를 없앰. 장애 시 규칙 기반 파서로 폴백 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
-| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions, Docker Compose | 테스트 70개를 H2와 MySQL 양쪽에서 실행 |
+| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions | 테스트를 H2와 MySQL 양쪽에서 실행. CI는 테스트, 빌드, 서버 환경 스모크 테스트까지 |
+| Infra | Docker Compose, Caddy | 서버 환경을 파일 하나로 재현. Caddy는 HTTPS 인증서 발급, 정적 파일, 프록시, 헬스체크 기반 라우팅을 설정 몇 줄로 처리 |
 | (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)) |
 
 <br>
@@ -46,6 +47,7 @@
 | PG 승인 직후 우리 서버 장애 | 돈은 빠졌는데 주문은 "결제 중" | 대사 배치가 PG 기준으로 **자동 복구** |
 | 관리자 재고 조정 (데모 DB) | 덮어쓰기 → 한정 100개 상품 재고가 **16,602개**로 부풂 | 증감(입고/출고) 조정으로 실물 수와 일치 |
 | 탈퇴·정지 후 기존 JWT | 만료(2시간)까지 계속 사용 가능 | **다음 요청부터 거부** |
+| 운영 환경변수 누락 | `ADMIN_PASSWORD`가 연결되지 않아 설정해도 `admin/admin` 그대로, 데모 키로도 기동 | 누락·데모값이 하나라도 있으면 **기동 중단** |
 
 <br>
 
@@ -66,6 +68,7 @@
 - [#13] [탈퇴·정지한 회원의 JWT가 계속 살아 있는 문제: token_version과 캐시](docs/issues/09-auth.md)
 - [#14] [로그 저장 때문에 주문이 느려지면 안 된다: 활동 로그 비동기 배치 적재](docs/issues/10-activity-log.md)
 - [#15] [LLM 검색이 상품을 지어내지 않게, 그리고 "마으수"를 "마우스"로: 한글 자모 오타 교정](docs/issues/11-ai-search.md)
+- [#16] [데모 기본값으로 "잘 뜨는" 운영 서버를 막기: 설정 안전장치와 서버 환경 분리](docs/issues/12-production-guard.md)
 
 <br>
 
@@ -78,7 +81,8 @@
 - **외부 결제 호출은 트랜잭션 밖에서**: PG 지연이 DB 커넥션 고갈로 번지지 않게. 타임아웃은 실패가 아니라 "모름(UNKNOWN)"으로 두고 대사 배치로 확정
 - **돈과 재고가 걸린 순서를 지킴**: 결제 결과를 모르는 주문은 만료·취소 대상에서 제외, 환불은 PG 환불이 성공한 뒤에만 우리 쪽 상태 변경
 - **재고는 덮어쓰지 않고 증감으로**: 관리자 조정과 재고 복구는 `stock = stock + :delta`. 가용 재고와 결제 대기 수량을 따로 표시
-- **테스트는 운영과 같은 DB에서도**: 같은 테스트 70개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **테스트는 운영과 같은 DB에서도**: 같은 테스트 75개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **안전하지 않으면 운영 서버가 뜨지 않게**: 데모 JWT 키, `admin/admin`, 데모 회원, H2, 개발 도구 중 하나라도 남아 있으면 `prod` 프로필 기동을 중단 (fail fast)
 - **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), LLM 장애 시 규칙 기반 폴백
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
 
@@ -290,29 +294,29 @@ erDiagram
 
 ## 실행 방법
 
+환경은 둘로 나뉩니다. **테스트 환경**은 Docker 없이 바로 돌고, **서버 환경**은 MySQL·앱·HTTPS 프록시를 컨테이너로 함께 띄웁니다 ([서버 환경 가이드](docs/deploy.md)).
+
 ```bash
-# 백엔드 (H2, 설치 없이 바로 실행) → http://localhost:8080
-cd backend && ./gradlew bootRun
+# ── 테스트 환경 (JDK 21, Node 22) ──
+cd backend && ./gradlew bootRun                     # 백엔드 (H2) → http://localhost:8080
+cd frontend && npm install && npm run dev           # 프론트엔드 → http://localhost:5173
+cd backend && ./gradlew test                        # 테스트 (H2)
+cd backend && DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql   # 같은 테스트를 MySQL에서
+node loadtest/order-rush.mjs --all --stock 2000 --requests 2000  # 부하 테스트 (서버 실행 중)
 
-# 백엔드 (MySQL 8)
-cd backend && SPRING_PROFILES_ACTIVE=mysql DB_USER=root DB_PASSWORD=<비밀번호> ./gradlew bootRun
-
-# 프론트엔드 → http://localhost:5173
-cd frontend && npm install && npm run dev
-
-# 테스트 (H2 / MySQL)
-cd backend && ./gradlew test
-cd backend && DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql
-
-# 부하 테스트 (서버 실행 중)
-node loadtest/order-rush.mjs --all --stock 2000 --requests 2000
+# ── 서버 환경 (Docker) ──
+cd deploy && cp .env.example .env                   # 비밀값 채우기
+docker compose up -d --build                        # MySQL + 앱(prod) + Caddy → https://localhost
+./smoke-test.sh                                     # 프록시를 거쳐 조회·가입·주문·결제 확인
 ```
 
 | 아이디 | 비밀번호 | 권한 |
 |---|---|---|
 | user1 | user1234! | USER |
 | user2 | user1234! | USER |
-| admin | admin | ADMIN (데모용. 운영에서는 `ADMIN_PASSWORD`로 교체) |
+| admin | admin | ADMIN |
+
+데모 계정은 로컬용입니다. 운영 프로필(`prod`)은 데모 회원을 만들지 않고, `JWT_SECRET`과 `ADMIN_PASSWORD`가 없으면 **서버가 뜨지 않습니다**.
 
 설정, 부하 테스트 옵션, API 호출 예시, 기능 둘러보기 순서는 [실행 가이드](docs/guide.md)에 있습니다.
 상품 이미지는 Wikimedia Commons의 자유 라이선스 사진입니다 ([IMAGE_CREDITS.md](IMAGE_CREDITS.md)).
@@ -335,13 +339,16 @@ backend/src/main/java/com/flashdeal
 ├── activity/      활동 로그 필터, 비동기 배치 적재, 조회 API
 ├── ai/            Claude 질의 파서, 규칙 기반 폴백, 캐시, 오타 교정
 ├── admin/         관리자 API(상품·주문·회원·재고·정합성), 개발 도구(플래그, 기본 꺼짐)
-└── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터
-backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V4)
+└── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터, 운영 설정 안전장치(ProductionGuard)
+backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V5)
 frontend/src
 ├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문)
 └── components/    헤더, 카테고리 사이드바, 상품 카드, 이미지
 docs/issues/       기술적 이슈별 문제 → 원인 → 해결 → 결과
-docs/guide.md      실행 가이드
+docs/guide.md      실행 가이드 (테스트 환경)
+docs/deploy.md     서버 환경 가이드 (Docker, 배포)
+deploy/            서버 환경: docker-compose (MySQL + 앱 + Caddy), .env 예시, 스모크 테스트
+.github/workflows  ci.yml (테스트, 빌드, 서버 환경 스모크 테스트), deploy.yml (수동 배포)
 loadtest/          HTTP 부하 테스트
 scripts/           상품 이미지 수집
 ```
@@ -357,4 +364,4 @@ scripts/           상품 이미지 수집
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.
 - CI(GitHub Actions)는 H2로 테스트합니다. Testcontainers로 CI에서도 MySQL 테스트를 돌리는 것이 다음 단계입니다.
-- 아직 검증하지 못한 부분: Claude API 실제 호출(API 키가 없어 제어 흐름만 스텁 테스트로 검증), Docker Compose와 GitHub Actions 워크플로(구성만 해 두고 실행 전)
+- LLM 실제 호출은 API 키 없이 폴백 경로만 테스트로 확인했습니다.

@@ -26,9 +26,9 @@ npm install
 npm run dev
 ```
 
-- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V4)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
+- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V5)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
 - `ANTHROPIC_API_KEY`를 설정하면 AI 검색이 Claude API를 사용합니다. 없으면 규칙 기반 파서로 동작합니다.
-- `docker compose up --build`로 앱과 MySQL을 함께 띄우는 구성도 있습니다 (`docker-compose.yml`). 로컬에 Docker가 없어 직접 실행해 보지는 못했습니다.
+- 여기까지가 **테스트 환경**(Docker 불필요)입니다. MySQL, 앱, HTTPS 프록시를 컨테이너로 함께 띄우는 **서버 환경**은 [서버 환경 가이드](deploy.md)에 있습니다 (`deploy/docker-compose.yml`).
 
 | URL | 용도 |
 |---|---|
@@ -50,13 +50,13 @@ npm run dev
 - 아이디 또는 이메일로 로그인합니다. 로그인 화면의 "데모 계정" 버튼은 입력칸만 채워줍니다.
 - 회원가입 규칙: 아이디는 영문 소문자·숫자·`_` 4~20자, 비밀번호는 영문과 숫자를 포함해 8자 이상
 - 로그인에 5회 실패하면 5분 동안 잠깁니다. 관리자 → 회원 관리에서 잠금을 풀 수 있습니다.
-- `admin / admin`은 데모용입니다. 운영이라면 `ADMIN_PASSWORD`(처음 시드될 때만 적용)와 `JWT_SECRET` 환경변수를 반드시 설정해야 합니다.
+- `admin / admin`과 데모 회원은 로컬용입니다. 운영 프로필(`prod`)은 데모 회원을 만들지 않고, `ADMIN_PASSWORD`(처음 시드될 때만 적용)와 `JWT_SECRET`이 없으면 기동하지 않습니다 ([서버 환경 가이드](deploy.md#운영-프로필prod이-막는-것)).
 
 ## 3. 테스트
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 70개, H2 (약 2분)
+./gradlew test                                          # 전체 75개, H2 (약 2분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -122,15 +122,17 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 | `flashdeal.ai.model` | claude-opus-5 | 질의 해석 모델 |
 | `flashdeal.ai.timeout` | 8s | LLM 타임아웃 (재시도 없이 바로 폴백) |
 | `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
-| `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`) |
+| `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
+| `flashdeal.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |
+| `spring.profiles.active` | (없음 = 로컬) | `mysql`: MySQL로 실행, `prod`: 운영 (MySQL + 안전장치 + JSON 로그, [서버 환경 가이드](deploy.md)) |
 | `spring.jpa.hibernate.ddl-auto` | validate | 스키마는 Flyway가 관리 |
 | `spring.jpa.properties.hibernate.default_batch_fetch_size` | 100 | N+1 해결 |
 | `spring.jpa.open-in-view` | false | 트랜잭션 밖 지연 로딩 차단 |
 
 ### 스키마 변경 (Flyway)
 
-- `backend/src/main/resources/db/migration/`에 다음 번호의 파일(`V5__설명.sql`)을 추가하고 엔티티를 맞춥니다. 서버를 띄울 때 자동으로 적용되고, JPA `validate`가 엔티티와 스키마의 불일치를 잡아냅니다.
-- 이미 적용된 V1~V4 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
+- `backend/src/main/resources/db/migration/`에 다음 번호의 파일(`V6__설명.sql`)을 추가하고 엔티티를 맞춥니다. 서버를 띄울 때 자동으로 적용되고, JPA `validate`가 엔티티와 스키마의 불일치를 잡아냅니다.
+- 이미 적용된 V1~V5 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
 - H2와 MySQL 양쪽에서 동작하는 문법만 씁니다 (예: `ALTER TABLE ... ADD COLUMN`은 한 문장에 하나씩).
 
 ## 6. 상품 이미지
