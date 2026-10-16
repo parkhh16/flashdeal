@@ -1,0 +1,36 @@
+# 서버 환경의 입구. HTTPS, 정적 파일(React 빌드 결과), /api 프록시를 한 곳에서 처리한다.
+#
+# SITE_ADDRESS   도메인(예: shop.example.com)이면 Let's Encrypt 인증서를 자동으로 받는다
+#                localhost면 Caddy 내부 인증서(브라우저 경고), :80이면 HTTP만
+# APP_UPSTREAMS  앱 서버 목록 (공백으로 구분). 여러 대면 라운드 로빈으로 나누고,
+#                readiness가 DOWN인 서버에는 보내지 않는다
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy {$APP_UPSTREAMS:app:8080} {
+			lb_policy round_robin
+			health_uri /actuator/health/readiness
+			health_interval 5s
+			health_timeout 2s
+		}
+	}
+
+	# actuator, mock-pg 같은 내부 경로는 프록시하지 않는다. 나머지는 React 라우터가 처리한다 (SPA)
+	handle {
+		root * {$STATIC_ROOT:/srv}
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
