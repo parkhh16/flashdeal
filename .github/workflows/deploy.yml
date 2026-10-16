@@ -1,0 +1,71 @@
+name: Deploy
+
+# 수동 실행 전용 (Actions 탭 → Deploy → Run workflow).
+# 1) 앱·웹 이미지를 GHCR(ghcr.io)에 올리고
+# 2) 서버 접속 정보(Secrets)가 있으면 SSH로 서버의 compose를 새 이미지로 교체한 뒤
+# 3) 주소를 입력했으면 외부에서 스모크 테스트를 돌린다.
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY. 없으면 이미지 푸시까지만 한다 (docs/deploy.md)
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "배포 후 스모크 테스트할 주소 (예: https://shop.example.com). 비우면 건너뜀"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/flashdeal
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 앱 이미지
+        run: |
+          docker build -t "$IMAGE_PREFIX-app:${{ github.sha }}" -t "$IMAGE_PREFIX-app:latest" backend
+          docker push --all-tags "$IMAGE_PREFIX-app"
+      - name: 웹 이미지
+        run: |
+          docker build -t "$IMAGE_PREFIX-web:${{ github.sha }}" -t "$IMAGE_PREFIX-web:latest" frontend
+          docker push --all-tags "$IMAGE_PREFIX-web"
+
+  deploy:
+    needs: images
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      SMOKE_URL: ${{ inputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 서버 정보가 없으면 이미지 푸시까지만
+        if: env.DEPLOY_HOST == ''
+        run: echo "::notice::DEPLOY_HOST Secret이 없어 서버 반영은 건너뜁니다. 이미지는 $IMAGE_PREFIX-app, -web 에 있습니다"
+      - name: 서버에 반영
+        if: env.DEPLOY_HOST != ''
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          # compose 파일과 스크립트만 올린다. 서버의 .env(비밀값)는 서버에만 있고 건드리지 않는다
+          ssh -i ~/.ssh/deploy_key "$target" "mkdir -p ~/flashdeal/deploy"
+          scp -i ~/.ssh/deploy_key deploy/docker-compose.yml deploy/smoke-test.sh "$target:~/flashdeal/deploy/"
+          ssh -i ~/.ssh/deploy_key "$target" "cd ~/flashdeal/deploy \
+            && export IMAGE_PREFIX=$IMAGE_PREFIX IMAGE_TAG=${{ github.sha }} \
+            && docker compose pull app web \
+            && docker compose up -d --no-build --wait --wait-timeout 300"
+      - name: 외부에서 스모크 테스트
+        if: env.DEPLOY_HOST != '' && env.SMOKE_URL != ''
+        run: bash deploy/smoke-test.sh "$SMOKE_URL"

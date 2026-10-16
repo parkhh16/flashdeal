@@ -41,3 +41,35 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  # 서버 환경: 이미지를 빌드해 compose(MySQL + 앱 + Caddy)를 실제로 띄우고, HTTPS 프록시를 거쳐 스모크 테스트
+  server-env:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v4
+      - name: 테스트용 비밀값 (실행마다 새로 만든다)
+        run: |
+          {
+            echo "MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "DB_PASSWORD=$(openssl rand -hex 16)"
+            echo "JWT_SECRET=$(openssl rand -base64 32)"
+            echo "ADMIN_PASSWORD=$(openssl rand -hex 12)"
+            echo "SITE_ADDRESS=localhost"
+          } > .env
+      - name: compose 파일 검증
+        run: docker compose config --quiet
+      - name: 빌드하고 띄우기 (앱 readiness가 UP이 될 때까지 대기)
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: 스모크 테스트 (https://localhost, Caddy 내부 인증서)
+        run: |
+          set -a; . ./.env; set +a
+          bash smoke-test.sh https://localhost
+      - name: 실패하면 로그 출력
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: 정리
+        if: always()
+        run: docker compose down -v
