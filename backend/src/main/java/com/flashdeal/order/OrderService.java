@@ -62,7 +62,7 @@ public class OrderService {
         request.items().forEach(l -> lines.merge(l.productId(), l.quantity(), Integer::sum));
 
         LocalDateTime now = LocalDateTime.now(clock);
-        validatePurchaseRules(userId, lines, now);
+        validatePurchaseRules(userId, lines);
 
         Order order = Order.create(userId, now.plus(properties.order().reservationTtl()));
         lines.forEach((productId, quantity) -> {
@@ -77,17 +77,16 @@ public class OrderService {
     }
 
     /**
-     * 판매 기간과 1인 구매 제한을 재고 차감 "전에" 검증한다.
+     * 판매 여부와 1인 구매 제한을 재고 차감 "전에" 검증한다.
      * 1인 제한은 "조회 → 비교"라서 같은 사용자가 동시에 주문하면 둘 다 통과할 수 있다(check-then-act 경쟁).
      * 사용자 행에 락을 걸어 같은 사용자의 주문만 줄 세운다. 락 범위가 상품이 아니라 사용자라서 핫스팟이 생기지 않고,
      * 락 순서가 항상 사용자 → 상품(id 오름차순)이라 데드락도 없다.
      */
-    private void validatePurchaseRules(Long userId, Map<Long, Integer> lines, LocalDateTime now) {
+    private void validatePurchaseRules(Long userId, Map<Long, Integer> lines) {
         List<PurchaseRule> rules = productRepository.findPurchaseRules(lines.keySet());
         if (rules.size() != lines.size() || rules.stream().anyMatch(r -> !r.active())) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
         }
-        rules.forEach(rule -> rule.checkSalePeriod(now));
 
         List<PurchaseRule> limited = rules.stream().filter(PurchaseRule::limited).toList();
         if (limited.isEmpty()) {

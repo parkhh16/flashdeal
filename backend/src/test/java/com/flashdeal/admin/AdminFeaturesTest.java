@@ -107,7 +107,7 @@ class AdminFeaturesTest {
         new TransactionTemplate(txManager).executeWithoutResult(s ->
                 productRepository.findById(product.getId()).orElseThrow().changeActive(false));
 
-        assertThat(productQueryService.search(new SearchCondition(null, null, null, null, null, false, null)))
+        assertThat(productQueryService.search(new SearchCondition(null, null, null, null, false, null)))
                 .noneMatch(p -> p.id().equals(product.getId()));
         assertThatThrownBy(() -> productQueryService.detail(product.getId())).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> order(1))
@@ -140,7 +140,7 @@ class AdminFeaturesTest {
             Product p = productRepository.findById(product.getId()).orElseThrow(); // 이 시점 stock=10을 읽음
             // 다른 트랜잭션(주문)이 재고를 3 줄이고 커밋
             CompletableFuture.runAsync(() -> jdbc.update("update product set stock = stock - 3 where id = ?", p.getId())).join();
-            p.update("이름 변경", SubCategory.KEYBOARD_MECHANICAL, 12_000, null, "d", null, null, null, null, null);
+            p.update("이름 변경", SubCategory.KEYBOARD_MECHANICAL, 12_000, null, "d", null, null);
         });
 
         Product after = productRepository.findById(product.getId()).orElseThrow();

@@ -23,17 +23,16 @@ public class ProductController {
     private final ProductQueryService productQueryService;
     private final AiSearchService aiSearchService;
 
-    @Operation(summary = "상품 목록", description = "category/sub(소분류)/deal(진행·예정 특가)/가격대/품절 제외 필터 + 정렬")
+    @Operation(summary = "상품 목록", description = "category/sub(소분류)/가격대/품절 제외/키워드 필터 + 정렬")
     @GetMapping("/api/products")
     public List<ProductResponse> list(@RequestParam(required = false) ProductCategory category,
                                       @RequestParam(required = false) SubCategory sub,
-                                      @RequestParam(required = false) Boolean deal,
                                       @RequestParam(required = false) Long minPrice,
                                       @RequestParam(required = false) Long maxPrice,
                                       @RequestParam(defaultValue = "false") boolean excludeSoldOut,
                                       @RequestParam(defaultValue = "POPULAR") Sort sort,
                                       @RequestParam(required = false) @Size(max = 30) String keyword) {
-        return productQueryService.search(new SearchCondition(category, sub, deal, minPrice, maxPrice, excludeSoldOut, sort, keyword));
+        return productQueryService.search(new SearchCondition(category, sub, minPrice, maxPrice, excludeSoldOut, sort, keyword));
     }
 
     @Operation(summary = "카테고리 트리 (사이드바)", description = "대분류 > 소분류와 상품 개수")

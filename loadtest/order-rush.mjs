@@ -11,8 +11,8 @@
  *
  * 흐름: 관리자 로그인 → 사용자 N명 가입 → (전략마다) 전략 전환 → 전용 테스트 상품 생성 → 동시 주문 폭주 → 정합성 검증 → 테스트 상품 판매 중지
  *
- * 전략마다 새 상품을 만드는 이유: 시연용 상품(한정판 키보드 등)의 재고를 덮어쓰며 테스트하면
- * 결제 대기 주문이 만료될 때 재고가 부풀고, 판매량·특가 기간이 오염된다 (실제로 재고 16,602개까지 부풀었음).
+ * 전략마다 새 상품을 만드는 이유: 시연용 상품의 재고를 덮어쓰며 테스트하면
+ * 결제 대기 주문이 만료될 때 재고가 부풀고, 판매량이 오염된다 (실제로 재고 16,602개까지 부풀었음).
  */
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, cur, i, arr) => {
   if (cur.startsWith('--')) acc.push([cur.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true])
@@ -61,15 +61,14 @@ async function prepareUsers() {
   return tokens
 }
 
-/** 특가·1인 제한이 없는 부하 테스트 전용 상품. 측정이 끝나면 판매 중지해서 쇼핑몰에 남지 않게 한다 */
+/** 1인 제한이 없는 부하 테스트 전용 상품. 측정이 끝나면 판매 중지해서 쇼핑몰에 남지 않게 한다 */
 async function createProduct(adminToken, label) {
   const r = await call('POST', '/api/admin/products', {
     token: adminToken,
     body: {
       name: `[부하 테스트] ${label} ${new Date().toLocaleString('ko-KR')}`.slice(0, 100),
-      subCategory: 'ACCESSORY_ETC', price: 1000, originalPrice: null, stock: STOCK,
+      subCategory: 'ACCESSORY_ETC', price: 1000, originalPrice: null, stock: STOCK, perUserLimit: null,
       description: '부하 테스트 전용 상품 (측정 후 자동으로 판매 중지)', detail: '',
-      dealStartAt: null, dealEndAt: null, dealQuantity: null, perUserLimit: null,
     },
   })
   if (r.status !== 201) throw new Error('테스트 상품을 만들지 못했습니다: ' + JSON.stringify(r.data))

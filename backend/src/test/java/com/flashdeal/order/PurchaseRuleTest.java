@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -47,10 +46,9 @@ class PurchaseRuleTest {
         userId = userRepository.save(new User(UUID.randomUUID() + "@t.com", "x", "tester", User.Role.USER)).getId();
     }
 
-    private Product deal(LocalDateTime start, LocalDateTime end, Integer limit, int stock) {
-        return productRepository.save(Product.builder().name("특가").subCategory(SubCategory.MOUSE_WIRELESS)
-                .price(10_000).originalPrice(20_000L).stock(stock).dealQuantity(stock)
-                .dealStartAt(start).dealEndAt(end).perUserLimit(limit).build());
+    private Product limitedProduct(Integer limit, int stock) {
+        return productRepository.save(Product.builder().name("구매 제한 상품").subCategory(SubCategory.MOUSE_WIRELESS)
+                .price(10_000).stock(stock).perUserLimit(limit).build());
     }
 
     private void order(Long productId, int qty) {
@@ -69,8 +67,7 @@ class PurchaseRuleTest {
     @Test
     @DisplayName("1인 2개 제한: 2개까지는 성공, 이후 추가 주문은 거절")
     void limit() {
-        LocalDateTime now = LocalDateTime.now();
-        Product p = deal(now.minusHours(1), now.plusHours(1), 2, 100);
+        Product p = limitedProduct(2, 100);
 
         order(p.getId(), 2);
 
@@ -81,8 +78,7 @@ class PurchaseRuleTest {
     @Test
     @DisplayName("만료된 주문은 한도에서 제외된다 (재고를 돌려받았으므로)")
     void expiredOrdersDoNotCount() {
-        LocalDateTime now = LocalDateTime.now();
-        Product p = deal(now.minusHours(1), now.plusHours(1), 1, 100);
+        Product p = limitedProduct(1, 100);
         order(p.getId(), 1);
         jdbc.update("update orders set status = 'EXPIRED' where user_id = ?", userId);
 
@@ -94,8 +90,7 @@ class PurchaseRuleTest {
     @Test
     @DisplayName("같은 사용자가 1개씩 10번 동시에 주문해도 한도(2개)만큼만 성공한다")
     void concurrentSameUser() throws Exception {
-        LocalDateTime now = LocalDateTime.now();
-        Product p = deal(now.minusHours(1), now.plusHours(1), 2, 100);
+        Product p = limitedProduct(2, 100);
         AtomicInteger success = new AtomicInteger();
         AtomicInteger limited = new AtomicInteger();
         ExecutorService pool = Executors.newFixedThreadPool(10);
@@ -120,16 +115,17 @@ class PurchaseRuleTest {
     }
 
     @Test
-    @DisplayName("오픈 전 / 종료된 특가는 주문할 수 없고 재고도 줄지 않는다")
-    void salePeriod() {
-        LocalDateTime now = LocalDateTime.now();
-        Product upcoming = deal(now.plusHours(1), now.plusHours(2), null, 10);
-        Product ended = deal(now.minusHours(2), now.minusHours(1), null, 10);
+    @DisplayName("제한이 없는 상품은 같은 사용자가 여러 번 주문할 수 있고, 판매 중지 상품은 주문할 수 없다")
+    void unlimitedAndInactive() {
+        Product unlimited = limitedProduct(null, 10);
 
-        assertThat(codeOf(() -> order(upcoming.getId(), 1))).isEqualTo(ErrorCode.DEAL_NOT_OPEN);
-        assertThat(codeOf(() -> order(ended.getId(), 1))).isEqualTo(ErrorCode.DEAL_ENDED);
-        assertThat(fixtures.stockOf(upcoming.getId())).isEqualTo(10);
-        assertThat(fixtures.stockOf(ended.getId())).isEqualTo(10);
+        order(unlimited.getId(), 3);
+        order(unlimited.getId(), 3);
+        assertThat(fixtures.stockOf(unlimited.getId())).isEqualTo(4);
+
+        jdbc.update("update product set active = false where id = ?", unlimited.getId());
+        assertThat(codeOf(() -> order(unlimited.getId(), 1))).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+        assertThat(fixtures.stockOf(unlimited.getId())).isEqualTo(4);
     }
 
     @Test

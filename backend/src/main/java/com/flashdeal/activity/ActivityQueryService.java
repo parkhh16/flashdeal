@@ -17,7 +17,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -34,7 +33,6 @@ public class ActivityQueryService {
     private final ProductRepository productRepository;
     private final NamedParameterJdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
-    private final Clock clock;
 
     public enum StatusClass {SUCCESS, CLIENT_ERROR, SERVER_ERROR}
 
@@ -110,10 +108,9 @@ public class ActivityQueryService {
                 .map(l -> parse(l.getDetail()).get("productId"))
                 .filter(Objects::nonNull).map(v -> ((Number) v).longValue())
                 .distinct().limit(8).toList();
-        LocalDateTime now = LocalDateTime.now(clock);
         Map<Long, ProductResponse> products = productRepository.findAllById(viewedIds).stream()
                 .filter(p -> p.isActive())
-                .collect(Collectors.toMap(p -> p.getId(), p -> ProductResponse.from(p, now), (a, b) -> a));
+                .collect(Collectors.toMap(p -> p.getId(), p -> ProductResponse.from(p), (a, b) -> a));
         List<ProductResponse> viewed = viewedIds.stream().map(products::get).filter(Objects::nonNull).toList();
         return new MyActivity(searches, viewed);
     }

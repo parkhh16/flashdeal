@@ -20,12 +20,9 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
         long getCount();
     }
 
-    @Query("select new com.flashdeal.product.PurchaseRule(p.id, p.name, p.active, p.dealStartAt, p.dealEndAt, p.perUserLimit) " +
+    @Query("select new com.flashdeal.product.PurchaseRule(p.id, p.name, p.active, p.perUserLimit) " +
             "from Product p where p.id in :ids")
     List<PurchaseRule> findPurchaseRules(@Param("ids") java.util.Collection<Long> ids);
-
-    @Query("select count(p) from Product p where p.active = true and p.dealEndAt > :now")
-    long countActiveDeals(@Param("now") java.time.LocalDateTime now);
 
     /** PESSIMISTIC: SELECT ... FOR UPDATE */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -44,19 +41,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Query("update Product p set p.stock = p.stock - :qty, p.soldCount = p.soldCount + :qty, p.version = p.version + 1 " +
             "where p.id = :id and p.stock >= :qty")
     int decreaseIfEnough(@Param("id") Long id, @Param("qty") int qty);
-
-    Optional<Product> findFirstByNameOrderByIdAsc(String name);
-
-    /**
-     * 끝난 특가를 새 회차로 재편성한다. "종료된 지 일정 시간이 지난 경우에만" 조건을 WHERE에 넣어,
-     * 여러 번 호출되거나 동시에 호출돼도 한 번만 반영되게 한다 (조건부 UPDATE).
-     */
-    @Modifying
-    @Query("update Product p set p.dealStartAt = :start, p.dealEndAt = :end, p.stock = :stock, p.version = p.version + 1 " +
-            "where p.id = :id and p.dealEndAt < :endedBefore")
-    int rescheduleEndedDeal(@Param("id") Long id, @Param("start") java.time.LocalDateTime start,
-                            @Param("end") java.time.LocalDateTime end, @Param("stock") int stock,
-                            @Param("endedBefore") java.time.LocalDateTime endedBefore);
 
     /** 관리자 재고 조정: 덮어쓰지 않고 증감한다. 차감 결과가 음수가 되면 0건 */
     @Modifying

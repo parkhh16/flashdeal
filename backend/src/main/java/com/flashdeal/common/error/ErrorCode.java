@@ -39,8 +39,6 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "O001", "주문을 찾을 수 없습니다."),
     INVALID_ORDER_STATUS(HttpStatus.CONFLICT, "O002", "현재 주문 상태에서 처리할 수 없는 요청입니다."),
     ORDER_EXPIRED(HttpStatus.CONFLICT, "O003", "결제 기한이 지난 주문입니다."),
-    DEAL_NOT_OPEN(HttpStatus.CONFLICT, "O004", "아직 특가가 시작되지 않았습니다."),
-    DEAL_ENDED(HttpStatus.CONFLICT, "O005", "특가 판매가 종료되었습니다."),
     PURCHASE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "O006", "1인 구매 한도를 초과했습니다."),
 
     // payment

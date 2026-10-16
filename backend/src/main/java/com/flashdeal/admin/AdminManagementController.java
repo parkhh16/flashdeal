@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/** 운영용 관리자 API: 상품/특가 관리, 주문 관리(취소·환불), 정합성 점검. /api/admin/** 는 ROLE_ADMIN만 접근 */
+/** 운영용 관리자 API: 상품 관리, 주문 관리(취소·환불), 정합성 점검. /api/admin/** 는 ROLE_ADMIN만 접근 */
 @Tag(name = "Admin")
 @SecurityRequirement(name = "bearer")
 @RestController
@@ -51,7 +51,7 @@ public class AdminManagementController {
         return catalogService.create(form);
     }
 
-    @Operation(summary = "상품/특가 수정", description = "재고는 이 API로 바꾸지 않는다 (POST /products/{id}/stock-adjustments)")
+    @Operation(summary = "상품 수정", description = "재고는 이 API로 바꾸지 않는다 (POST /products/{id}/stock-adjustments)")
     @PutMapping("/products/{id}")
     public AdminProduct update(@PathVariable Long id, @Valid @RequestBody ProductForm form) {
         return catalogService.update(id, form);

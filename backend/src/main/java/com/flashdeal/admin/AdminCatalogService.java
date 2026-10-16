@@ -26,8 +26,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -42,7 +40,6 @@ public class AdminCatalogService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
-    private final Clock clock;
 
     public record ProductForm(@NotBlank @Size(max = 100) String name,
                               @NotNull SubCategory subCategory,
@@ -51,9 +48,6 @@ public class AdminCatalogService {
                               @PositiveOrZero Integer stock,
                               @Size(max = 500) String description,
                               @Size(max = 2000) String detail,
-                              LocalDateTime dealStartAt,
-                              LocalDateTime dealEndAt,
-                              @Positive Integer dealQuantity,
                               @Positive Integer perUserLimit) {
     }
 
@@ -70,11 +64,10 @@ public class AdminCatalogService {
 
     @Transactional(readOnly = true)
     public List<AdminProduct> products() {
-        LocalDateTime now = LocalDateTime.now(clock);
         // 상품별 선점 수량은 GROUP BY 한 번으로 (상품마다 합계 쿼리를 날리면 N+1)
         Map<Long, Long> held = orderRepository.sumHeldQuantityByProduct(HOLDING).stream()
                 .collect(Collectors.toMap(OrderRepository.ProductHeld::getProductId, OrderRepository.ProductHeld::getQuantity));
-        return productRepository.findAll(Sort.by("id")).stream().map(p -> toAdmin(p, now, held.getOrDefault(p.getId(), 0L))).toList();
+        return productRepository.findAll(Sort.by("id")).stream().map(p -> toAdmin(p, held.getOrDefault(p.getId(), 0L))).toList();
     }
 
     @Transactional
@@ -82,21 +75,21 @@ public class AdminCatalogService {
         Product product = Product.builder().name(f.name()).subCategory(f.subCategory()).price(f.price())
                 .stock(f.stock() == null ? 0 : f.stock()).build();
         applyForm(product, f);
-        return toAdmin(productRepository.save(product), LocalDateTime.now(clock));
+        return toAdmin(productRepository.save(product));
     }
 
     @Transactional
     public AdminProduct update(Long id, ProductForm f) {
         Product product = find(id);
         applyForm(product, f);
-        return toAdmin(product, LocalDateTime.now(clock));
+        return toAdmin(product);
     }
 
     @Transactional
     public AdminProduct changeActive(Long id, boolean active) {
         Product product = find(id);
         product.changeActive(active);
-        return toAdmin(product, LocalDateTime.now(clock));
+        return toAdmin(product);
     }
 
     /** 주문 목록. items는 배치 페치, 사용자 이름과 결제 상태는 IN 쿼리 한 번씩 → 페이지당 쿼리 수 고정 */
@@ -121,20 +114,19 @@ public class AdminCatalogService {
     }
 
     private void applyForm(Product product, ProductForm f) {
-        boolean deal = f.dealEndAt() != null;
         product.update(f.name(), f.subCategory(), f.price(), f.originalPrice(), f.description(), f.detail(),
-                deal ? f.dealStartAt() : null, f.dealEndAt(), deal ? f.dealQuantity() : null, f.perUserLimit());
+                f.perUserLimit());
     }
 
     private Product find(Long id) {
         return productRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
-    private AdminProduct toAdmin(Product p, LocalDateTime now) {
-        return toAdmin(p, now, orderRepository.sumHeldQuantity(p.getId(), HOLDING));
+    private AdminProduct toAdmin(Product p) {
+        return toAdmin(p, orderRepository.sumHeldQuantity(p.getId(), HOLDING));
     }
 
-    private AdminProduct toAdmin(Product p, LocalDateTime now, long held) {
-        return new AdminProduct(ProductResponse.from(p, now), p.isActive(), p.getDetail(), held);
+    private AdminProduct toAdmin(Product p, long held) {
+        return new AdminProduct(ProductResponse.from(p), p.isActive(), p.getDetail(), held);
     }
 }

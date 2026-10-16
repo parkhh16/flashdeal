@@ -8,9 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,7 +40,6 @@ public class AiSearchService {
     private final ClaudeQueryParser claude;
     private final RuleBasedQueryParser rules;
     private final ProductRepository productRepository;
-    private final Clock clock;
     private final Cache<String, Parsed> cache = Caffeine.newBuilder()
             .maximumSize(1_000)
             .expireAfterWrite(Duration.ofMinutes(30))
@@ -51,9 +48,8 @@ public class AiSearchService {
     private final TypoCorrector typoCorrector;
 
     public AiSearchService(ClaudeQueryParser claude, RuleBasedQueryParser rules, ProductRepository productRepository,
-                           Clock clock, TypoCorrector typoCorrector) {
+                           TypoCorrector typoCorrector) {
         this.typoCorrector = typoCorrector;
-        this.clock = clock;
         this.claude = claude;
         this.rules = rules;
         this.productRepository = productRepository;
@@ -97,9 +93,8 @@ public class AiSearchService {
         if (f.keyword() == null || !hasOtherCondition) {
             return r;
         }
-        LocalDateTime now = LocalDateTime.now(clock);
         List<ProductResponse> relaxed = productRepository.search(f.category(), f.minPrice(), f.maxPrice(), null)
-                .stream().map(p -> ProductResponse.from(p, now)).toList();
+                .stream().map(ProductResponse::from).toList();
         return new AiSearchResponse(r.query(), r.parsedBy(), f, r.fallbackReason(), r.parseMillis(), relaxed, null);
     }
 
@@ -119,10 +114,9 @@ public class AiSearchService {
         long parseMillis = (System.nanoTime() - start) / 1_000_000;
 
         SearchFilter f = parsed.filter();
-        LocalDateTime now = LocalDateTime.now(clock);
         List<ProductResponse> products = productRepository
                 .search(f.category(), f.minPrice(), f.maxPrice(), f.keyword())
-                .stream().map(p -> ProductResponse.from(p, now)).toList();
+                .stream().map(ProductResponse::from).toList();
         log.info("event=AI_SEARCH query=\"{}\" by={} filter={} results={} parseMs={}",
                 query, parsed.by(), f, products.size(), parseMillis);
         return new AiSearchResponse(query, parsed.by(), f, parsed.reason(), parseMillis, products, null);

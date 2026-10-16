@@ -3,7 +3,6 @@ package com.flashdeal.product;
 import com.flashdeal.common.error.BusinessException;
 import com.flashdeal.common.error.ErrorCode;
 import com.flashdeal.product.ProductDtos.*;
-import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +11,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,26 +20,23 @@ import java.util.stream.Collectors;
 public class ProductQueryService {
 
     private final ProductRepository productRepository;
-    private final Clock clock;
 
     public List<ProductResponse> search(SearchCondition condition) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        return productRepository.findAll(spec(condition, now)).stream()
-                .map(p -> ProductResponse.from(p, now))
+        return productRepository.findAll(spec(condition)).stream()
+                .map(ProductResponse::from)
                 .toList();
     }
 
     public ProductDetailResponse detail(Long id) {
-        LocalDateTime now = LocalDateTime.now(clock);
         Product product = productRepository.findById(id).filter(Product::isActive)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
         List<ProductResponse> related = productRepository.findAll(
-                        spec(new SearchCondition(null, product.getSubCategory(), null, null, null, true, Sort.POPULAR), now)
+                        spec(new SearchCondition(null, product.getSubCategory(), null, null, true, Sort.POPULAR))
                                 .and((root, q, cb) -> cb.notEqual(root.get("id"), id)),
                         PageRequest.of(0, 4))
-                .map(p -> ProductResponse.from(p, now))
+                .map(ProductResponse::from)
                 .getContent();
-        return new ProductDetailResponse(ProductResponse.from(product, now), product.getDetail(),
+        return new ProductDetailResponse(ProductResponse.from(product), product.getDetail(),
                 product.getSpecs(), product.getImages(), related);
     }
 
@@ -60,20 +54,19 @@ public class ProductQueryService {
             return new CategoryNode(category.name(), category.getLabel(), sum, children);
         }).toList();
         long total = nodes.stream().mapToLong(CategoryNode::count).sum();
-        return new CategoryTree(total, productRepository.countActiveDeals(LocalDateTime.now(clock)), nodes);
+        return new CategoryTree(total, nodes);
     }
 
     /**
-     * 조건 조합이 많아서(카테고리×특가×가격×품절×정렬) 정적 쿼리 대신 Specification으로 동적 조립한다.
+     * 조건 조합이 많아서(카테고리×가격×품절×키워드×정렬) 정적 쿼리 대신 Specification으로 동적 조립한다.
      * 정렬도 DB에서 처리한다: 인기순은 재고 차감과 같이 갱신되는 sold_count로 정렬한다.
      */
-    private Specification<Product> spec(SearchCondition c, LocalDateTime now) {
+    private Specification<Product> spec(SearchCondition c) {
         return (root, query, cb) -> {
             List<Predicate> where = new ArrayList<>();
             where.add(cb.isTrue(root.get("active")));
             if (c.category() != null) where.add(cb.equal(root.get("category"), c.category()));
             if (c.sub() != null) where.add(cb.equal(root.get("subCategory"), c.sub()));
-            if (Boolean.TRUE.equals(c.deal())) where.add(cb.greaterThan(root.get("dealEndAt"), now));
             if (c.minPrice() != null) where.add(cb.greaterThanOrEqualTo(root.get("price"), c.minPrice()));
             if (c.maxPrice() != null) where.add(cb.lessThanOrEqualTo(root.get("price"), c.maxPrice()));
             if (c.excludeSoldOut()) where.add(cb.greaterThan(root.get("stock"), 0));
@@ -88,25 +81,18 @@ public class ProductQueryService {
 
             // count 쿼리(페이징)에는 정렬을 붙이지 않는다
             if (query != null && !Long.class.equals(query.getResultType())) {
-                query.orderBy(orders(c.sort() == null ? Sort.POPULAR : c.sort(), root, cb, now));
+                query.orderBy(orders(c.sort() == null ? Sort.POPULAR : c.sort(), root, cb));
             }
             return cb.and(where.toArray(Predicate[]::new));
         };
     }
 
     private List<Order> orders(Sort sort, jakarta.persistence.criteria.Root<Product> root,
-                               jakarta.persistence.criteria.CriteriaBuilder cb, LocalDateTime now) {
+                               jakarta.persistence.criteria.CriteriaBuilder cb) {
         return switch (sort) {
             case PRICE_ASC -> List.of(cb.asc(root.get("price")), cb.asc(root.get("id")));
             case PRICE_DESC -> List.of(cb.desc(root.get("price")), cb.asc(root.get("id")));
             case POPULAR -> List.of(cb.desc(root.get("soldCount")), cb.asc(root.get("id")));
-            case DEADLINE -> {
-                // 진행 중인 특가를 마감이 가까운 순서로 먼저, 나머지(일반/종료)는 뒤로
-                Expression<Integer> activeFirst = cb.<Integer>selectCase()
-                        .when(cb.greaterThan(root.get("dealEndAt"), now), 0)
-                        .otherwise(1);
-                yield List.of(cb.asc(activeFirst), cb.asc(root.get("dealEndAt")), cb.asc(root.get("id")));
-            }
         };
     }
 }

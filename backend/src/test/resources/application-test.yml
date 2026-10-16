@@ -16,8 +16,6 @@ flashdeal:
     enabled: false        # 테스트에서는 스케줄러를 직접 호출해서 결정적으로 검증한다
   seed:
     enabled: false
-  demo:
-    rotate-deals: false
   pg:
     read-timeout: 1s
   payment:
