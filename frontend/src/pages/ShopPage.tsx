@@ -9,7 +9,6 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'POPULAR', label: '인기순' },
   { key: 'PRICE_ASC', label: '낮은가격순' },
   { key: 'PRICE_DESC', label: '높은가격순' },
-  { key: 'DEADLINE', label: '마감임박순' },
 ]
 
 const PRICE_PRESETS = [
@@ -26,14 +25,11 @@ const num = (v: string | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : u
 
 /** AI 검색 결과는 서버가 가격순으로 주므로, 화면의 정렬/품절 필터를 클라이언트에서 한 번 더 적용한다 */
 function applyLocal(products: Product[], sort: SortKey, excludeSoldOut: boolean) {
-  const list = excludeSoldOut ? products.filter(p => p.stock > 0) : [...products]
-  const deadline = (p: Product) => (p.dealStatus === 'ONGOING' || p.dealStatus === 'UPCOMING') && p.dealEndAt
-    ? new Date(p.dealEndAt).getTime() : Number.MAX_SAFE_INTEGER
+  const list = excludeSoldOut ? products.filter(p => !p.soldOut) : [...products]
   const cmp: Record<SortKey, (a: Product, b: Product) => number> = {
     POPULAR: (a, b) => b.soldCount - a.soldCount,
     PRICE_ASC: (a, b) => a.price - b.price,
     PRICE_DESC: (a, b) => b.price - a.price,
-    DEADLINE: (a, b) => deadline(a) - deadline(b),
   }
   return list.sort(cmp[sort])
 }
@@ -79,7 +75,6 @@ export function ShopPage() {
   const q = params.get('q')
   const category = params.get('category') ?? undefined
   const sub = params.get('sub') ?? undefined
-  const deal = params.get('deal') === '1'
   const sort = (params.get('sort') as SortKey) || 'POPULAR'
   const minPrice = num(params.get('min'))
   const maxPrice = num(params.get('max'))
@@ -100,12 +95,12 @@ export function ShopPage() {
       }).catch(e => { if (!cancelled) { fail(e); setProducts([]) } })
     } else {
       setAi(null)
-      api.products({ category, sub, deal, minPrice, maxPrice, excludeSoldOut, sort, keyword })
+      api.products({ category, sub, minPrice, maxPrice, excludeSoldOut, sort, keyword })
         .then(({ data }) => { if (!cancelled) setProducts(data) })
         .catch(e => { if (!cancelled) { fail(e); setProducts([]) } })
     }
     return () => { cancelled = true }
-  }, [q, exact, category, sub, deal, sort, minPrice, maxPrice, excludeSoldOut, keyword])
+  }, [q, exact, category, sub, sort, minPrice, maxPrice, excludeSoldOut, keyword])
 
   const update = (patch: Record<string, string | undefined>) => {
     const next = new URLSearchParams(params)
@@ -119,7 +114,7 @@ export function ShopPage() {
 
   const catNode = tree?.categories.find(c => c.code === category)
   const subNode = catNode?.children.find(s => s.code === sub)
-  const title = q ? `"${ai?.originalQuery ? ai.query : q}" 검색 결과` : deal ? '⚡ 오늘의 특가' : subNode ? subNode.label : catNode ? catNode.label : '전체 상품'
+  const title = q ? `"${ai?.originalQuery ? ai.query : q}" 검색 결과` : subNode ? subNode.label : catNode ? catNode.label : '전체 상품'
   const activePreset = PRICE_PRESETS.findIndex(p => p.min === minPrice && p.max === maxPrice)
   const categoryLabel = (code: string | null | undefined) => tree?.categories.find(c => c.code === code)?.label ?? code ?? ''
 
@@ -162,7 +157,6 @@ export function ShopPage() {
           <Link to="/">홈</Link>
           {catNode && <> › <Link to={`/?category=${catNode.code}`}>{catNode.label}</Link></>}
           {subNode && <> › <span>{subNode.label}</span></>}
-          {deal && <> › <span>오늘의 특가</span></>}
           {q && <> › <span>검색</span></>}
         </nav>
         <h2>{title} {visible && <span className="muted">{visible.length}개</span>}</h2>

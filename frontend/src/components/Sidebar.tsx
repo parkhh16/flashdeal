@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { api, type CategoryTree } from '../api'
 import { CATEGORY_ICON } from '../format'
 
-/** 무신사식 카테고리 트리. 선택 상태는 URL 쿼리(category/sub/deal)가 기준이다 */
+/** 무신사식 카테고리 트리. 선택 상태는 URL 쿼리(category/sub)가 기준이다 */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tree, setTree] = useState<CategoryTree | null>(null)
   const [params] = useSearchParams()
@@ -11,14 +11,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const onShop = pathname === '/'
   const category = params.get('category')
   const sub = params.get('sub')
-  const deal = params.get('deal') === '1'
   const searching = !!params.get('q')
   const [expanded, setExpanded] = useState<string | null>(category)
 
   useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => setTree(null)) }, [])
   useEffect(() => { if (category) setExpanded(category) }, [category])
 
-  const isAll = onShop && !category && !sub && !deal && !searching
+  const isAll = onShop && !category && !sub && !searching
 
   return (
     <>
@@ -31,9 +30,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <nav>
           <Link to="/" className={`side-item top ${isAll ? 'active' : ''}`}>
             <span>전체</span>{tree && <span className="count">{tree.total}</span>}
-          </Link>
-          <Link to="/?deal=1&sort=DEADLINE" className={`side-item top deal ${onShop && deal ? 'active' : ''}`}>
-            <span>⚡ 오늘의 특가</span>{tree && <span className="count">{tree.deals}</span>}
           </Link>
           <div className="side-divider" />
           {tree?.categories.map(c => {

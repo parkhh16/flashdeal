@@ -1,19 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { adminApi, api, type AdminProduct, type CategoryTree, type ProductForm } from '../../api'
-import { DealBadge } from '../../components/ProductCard'
+import { StatusBadge } from '../../components/ProductCard'
 import { ProductImage } from '../../components/ProductImage'
 import { useApp } from '../../context/AppContext'
 import { won } from '../../format'
-import { useNow } from '../../hooks'
 
-const toInput = (iso: string | null) => (iso ? iso.slice(0, 16) : '')
-const fromInput = (v: string) => (v ? `${v}:00` : null)
 const numOrNull = (v: string) => (v === '' ? null : Number(v))
 
 function emptyForm(): ProductForm {
-  return { name: '', subCategory: 'KEYBOARD_MECHANICAL', price: 10000, originalPrice: null, stock: 100, description: '', detail: '',
-    dealStartAt: null, dealEndAt: null, dealQuantity: null, perUserLimit: null }
+  return { name: '', subCategory: 'KEYBOARD_MECHANICAL', price: 10000, originalPrice: null, stock: 100, description: '', detail: '', perUserLimit: null }
 }
 
 function ProductEditor({ product, tree, onClose, onSaved }: {
@@ -23,19 +19,17 @@ function ProductEditor({ product, tree, onClose, onSaved }: {
   const [form, setForm] = useState<ProductForm>(() => product ? {
     name: product.name, subCategory: product.subCategory, price: product.price, originalPrice: product.originalPrice,
     stock: null, description: product.description ?? '', detail: product.detail ?? '',
-    dealStartAt: product.dealStartAt, dealEndAt: product.dealEndAt, dealQuantity: product.dealQuantity, perUserLimit: product.perUserLimit,
+    perUserLimit: product.perUserLimit,
   } : emptyForm())
-  const [deal, setDeal] = useState(!!product?.dealEndAt)
   const [saving, setSaving] = useState(false)
   const set = <K extends keyof ProductForm>(k: K, v: ProductForm[K]) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    const body: ProductForm = deal ? form : { ...form, dealStartAt: null, dealEndAt: null, dealQuantity: null }
     try {
-      if (product) await adminApi.updateProduct(product.id, body)
-      else await adminApi.createProduct(body)
+      if (product) await adminApi.updateProduct(product.id, form)
+      else await adminApi.createProduct(form)
       toast(product ? '상품을 수정했습니다.' : '상품을 등록했습니다.', 'success')
       onSaved()
     } catch (err) {
@@ -69,12 +63,6 @@ function ProductEditor({ product, tree, onClose, onSaved }: {
           <label>1인 구매 제한<input type="number" min={1} value={form.perUserLimit ?? ''} onChange={e => set('perUserLimit', numOrNull(e.target.value))} placeholder="제한 없음" /></label>
           <label className="span2">한 줄 설명<input maxLength={500} value={form.description} onChange={e => set('description', e.target.value)} /></label>
           <label className="span2">상세 설명<textarea rows={3} maxLength={2000} value={form.detail} onChange={e => set('detail', e.target.value)} /></label>
-          <label className="check span2"><input type="checkbox" checked={deal} onChange={e => setDeal(e.target.checked)} /> 특가 상품으로 설정 (기간 한정)</label>
-          {deal && <>
-            <label>오픈 시각<input type="datetime-local" value={toInput(form.dealStartAt)} onChange={e => set('dealStartAt', fromInput(e.target.value))} /></label>
-            <label>종료 시각<input type="datetime-local" required value={toInput(form.dealEndAt)} onChange={e => set('dealEndAt', fromInput(e.target.value))} /></label>
-            <label>한정 수량 (진행바 기준)<input type="number" min={1} value={form.dealQuantity ?? ''} onChange={e => set('dealQuantity', numOrNull(e.target.value))} /></label>
-          </>}
         </div>
         {product && <p className="muted">재고는 목록의 "재고" 칸에서 따로 조정합니다. 수정 중에 들어온 주문의 재고 차감을 덮어쓰지 않기 위해서입니다.</p>}
         <div className="modal-foot">
@@ -127,7 +115,6 @@ export function AdminProductsPage() {
   const [tree, setTree] = useState<CategoryTree | null>(null)
   const [editing, setEditing] = useState<AdminProduct | null | 'new'>(null)
   const [query, setQuery] = useState('')
-  const now = useNow()
 
   const load = () => adminApi.products().then(r => setProducts(r.data)).catch(fail)
   useEffect(() => { load(); api.categories().then(r => setTree(r.data)).catch(() => undefined) }, [])
@@ -152,7 +139,7 @@ export function AdminProductsPage() {
       <div className="table-wrap">
         <table className="data-table">
           <thead>
-            <tr><th></th><th>상품</th><th>가격</th><th title="가용 재고 (결제 대기 주문이 쥔 수량은 따로 표시)">재고 · 조정</th><th>판매량</th><th>특가</th><th>판매</th><th></th></tr>
+            <tr><th></th><th>상품</th><th>가격</th><th title="가용 재고 (결제 대기 주문이 쥔 수량은 따로 표시)">재고 · 조정</th><th>판매량</th><th>상태</th><th>판매</th><th></th></tr>
           </thead>
           <tbody>
             {visible?.map(p => (
@@ -168,7 +155,7 @@ export function AdminProductsPage() {
                 </td>
                 <td><StockCell product={p} onSaved={load} /></td>
                 <td className="num">{p.soldCount}</td>
-                <td>{p.dealStatus === 'NONE' ? <span className="muted">–</span> : <DealBadge product={p} now={now} />}</td>
+                <td>{p.soldOut ? <StatusBadge product={p} /> : <span className="muted">–</span>}</td>
                 <td>
                   <button className={`switch ${p.active ? 'on' : ''}`} role="switch" aria-checked={p.active} onClick={() => toggle(p)}
                           aria-label={`${p.name} 판매 ${p.active ? '중지' : '재개'}`}>

@@ -1,7 +1,6 @@
 export type Category = 'KEYBOARD' | 'MOUSE' | 'MONITOR' | 'AUDIO' | 'ACCESSORY'
 export type OrderStatus = 'PENDING_PAYMENT' | 'PAYING' | 'PAID' | 'EXPIRED' | 'CANCELLED'
-export type DealStatus = 'NONE' | 'UPCOMING' | 'ONGOING' | 'SOLD_OUT' | 'ENDED'
-export type SortKey = 'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC' | 'DEADLINE'
+export type SortKey = 'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC'
 
 export interface Session { accessToken: string; userId: number; loginId: string; name: string; role: 'USER' | 'ADMIN' }
 export interface Me { id: number; loginId: string; name: string; email: string; role: string; createdAt: string; lastLoginAt: string | null }
@@ -9,15 +8,14 @@ export interface Product {
   id: number; name: string
   category: Category; categoryLabel: string; subCategory: string; subCategoryLabel: string
   price: number; originalPrice: number | null; discountRate: number
-  stock: number; soldCount: number; description: string; thumbnail: string | null
-  dealStatus: DealStatus; dealStartAt: string | null; dealEndAt: string | null
-  dealQuantity: number | null; perUserLimit: number | null
+  stock: number; soldOut: boolean; soldCount: number; description: string; thumbnail: string | null
+  perUserLimit: number | null
 }
 export interface ProductDetail extends Product {
   detail: string | null; specs: Record<string, string>; images: string[]; related: Product[]
 }
 export interface CategoryNode { code: string; label: string; count: number; children: CategoryNode[] }
-export interface CategoryTree { total: number; deals: number; categories: CategoryNode[] }
+export interface CategoryTree { total: number; categories: CategoryNode[] }
 export interface OrderItem { productId: number; productName: string; unitPrice: number; quantity: number }
 export interface Order {
   id: number; orderNo: string; status: OrderStatus; totalAmount: number
@@ -33,7 +31,7 @@ export interface PaymentResult { orderId: number; paymentKey: string; status: st
 export interface Mismatch { orderId: number; orderNo: string; orderStatus: string; orderAmount: number; approvedAmount: number }
 
 export interface ProductQuery {
-  category?: string; sub?: string; deal?: boolean; minPrice?: number; maxPrice?: number
+  category?: string; sub?: string; minPrice?: number; maxPrice?: number
   excludeSoldOut?: boolean; sort?: SortKey; keyword?: string
 }
 
@@ -136,8 +134,7 @@ export interface AdminProduct extends Product { active: boolean; detail: string 
 export interface StockAdjustResult { productId: number; delta: number; stock: number; held: number }
 export interface ProductForm {
   name: string; subCategory: string; price: number; originalPrice: number | null; stock: number | null
-  description: string; detail: string; dealStartAt: string | null; dealEndAt: string | null
-  dealQuantity: number | null; perUserLimit: number | null
+  description: string; detail: string; perUserLimit: number | null
 }
 export interface AdminOrder extends Order { userId: number; userName: string | null; paymentStatus: string | null }
 export const adminApi = {

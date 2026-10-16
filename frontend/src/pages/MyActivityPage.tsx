@@ -64,7 +64,7 @@ export function MyActivityPage() {
         <h3>주문 내역</h3>
         {orders === null && <p className="muted">불러오는 중…</p>}
         {orders?.length === 0 && (
-          <div className="empty small"><p>아직 주문한 상품이 없어요.</p><Link to="/?deal=1&sort=DEADLINE" className="ghost-link">오늘의 특가 보러가기</Link></div>
+          <div className="empty small"><p>아직 주문한 상품이 없어요.</p><Link to="/" className="ghost-link">상품 보러가기</Link></div>
         )}
         <div className="orders">
           {orders?.map(o => (
