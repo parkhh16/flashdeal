@@ -122,7 +122,6 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 | `flashdeal.ai.model` | claude-opus-5 | 질의 해석 모델 |
 | `flashdeal.ai.timeout` | 8s | LLM 타임아웃 (재시도 없이 바로 폴백) |
 | `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
-| `flashdeal.demo.rotate-deals` | true | 끝난 데모 특가를 5분마다 같은 시간표로 다시 편성 (운영에서는 false) |
 | `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`) |
 | `spring.jpa.hibernate.ddl-auto` | validate | 스키마는 Flyway가 관리 |
 | `spring.jpa.properties.hibernate.default_batch_fetch_size` | 100 | N+1 해결 |
