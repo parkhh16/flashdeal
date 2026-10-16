@@ -42,8 +42,13 @@ public class DataInitializer implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
 
+    /** 환경변수 ADMIN_PASSWORD (application.yml에서 연결). 로컬 기본값은 admin, 운영은 ProductionGuard가 강제한다 */
     @org.springframework.beans.factory.annotation.Value("${flashdeal.seed.admin-password:admin}")
     private String adminPassword;
+
+    /** 비밀번호가 공개된 데모 회원(user1, user2)을 만들지. 운영 프로필에서는 false */
+    @org.springframework.beans.factory.annotation.Value("${flashdeal.seed.demo-users:true}")
+    private boolean demoUsers;
 
     @Override
     @Transactional
@@ -51,15 +56,16 @@ public class DataInitializer implements ApplicationRunner {
         if (userRepository.count() > 0) {
             return;
         }
-        // 데모 편의를 위한 admin/admin. 운영이라면 ADMIN_PASSWORD 환경변수로 반드시 바꿔야 한다
         userRepository.save(new User("admin", "admin@flashdeal.com", passwordEncoder.encode(adminPassword), "관리자", User.Role.ADMIN));
-        userRepository.save(new User("user1", "user1@flashdeal.com", passwordEncoder.encode("user1234!"), "김철수", User.Role.USER));
-        userRepository.save(new User("user2", "user2@flashdeal.com", passwordEncoder.encode("user1234!"), "이영희", User.Role.USER));
+        if (demoUsers) {
+            userRepository.save(new User("user1", "user1@flashdeal.com", passwordEncoder.encode("user1234!"), "김철수", User.Role.USER));
+            userRepository.save(new User("user2", "user2@flashdeal.com", passwordEncoder.encode("user1234!"), "이영희", User.Role.USER));
+        }
 
         List<Product> products = products();
         attachImages(products);
         productRepository.saveAll(products);
-        log.info("event=SEED_DONE users=3 products={}", products.size());
+        log.info("event=SEED_DONE users={} products={}", demoUsers ? 3 : 1, products.size());
     }
 
     private List<Product> products() {

@@ -38,7 +38,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories").permitAll()
                         .requestMatchers("/mock-pg/**").permitAll()   // 외부 PG사를 흉내 내는 엔드포인트
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // 프록시와 컨테이너 헬스체크용 (liveness, readiness). UP/DOWN만 응답하고 상세는 보여주지 않는다 (show-details 기본값 never)
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e

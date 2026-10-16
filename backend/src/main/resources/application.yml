@@ -1,6 +1,10 @@
 spring:
   application:
     name: flashdeal
+  profiles:
+    group:
+      # 운영(prod)은 항상 MySQL로 뜬다. SPRING_PROFILES_ACTIVE=prod 하나만 주면 된다
+      prod: mysql
   datasource:
     # 설치 없이 바로 실행되도록 기본은 H2(MySQL 호환 모드). LOCK_TIMEOUT은 비관적 락 대기 시간(ms)
     url: jdbc:h2:mem:flashdeal;MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1
@@ -30,6 +34,12 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      # /actuator/health/liveness(프로세스 생존), /actuator/health/readiness(트래픽 받을 준비, DB 포함)
+      # 프록시와 컨테이너 헬스체크가 readiness를 보고 요청을 보낼지 정한다
+      probes:
+        enabled: true
 
 logging:
   pattern:
@@ -65,6 +75,10 @@ flashdeal:
     timeout: 8s
   seed:
     enabled: true
+    # 처음 시드될 때(회원 테이블이 비어 있을 때)만 적용된다
+    admin-password: ${ADMIN_PASSWORD:admin}
+    # 비밀번호가 알려진 데모 회원(user1, user2). 운영에서는 만들지 않는다
+    demo-users: true
 
 ---
 spring:
@@ -78,3 +92,40 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+---
+# 운영. 데모 기본값(JWT 키, admin/admin, 데모 회원, H2, 개발 도구)으로는 기동하지 않는다 (ProductionGuard)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  lifecycle:
+    timeout-per-shutdown-phase: 20s   # 종료 신호를 받으면 처리 중인 요청을 최대 20초 기다린다
+
+server:
+  # 프록시(Caddy)가 붙여 주는 X-Forwarded-* 헤더로 원래 요청의 스킴(https)과 클라이언트 IP를 복원한다
+  forward-headers-strategy: framework
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  structured:
+    format:
+      console: ecs   # 로그 수집기가 읽기 쉬운 JSON. MDC의 traceId, userId가 필드로 들어간다
+
+flashdeal:
+  jwt:
+    secret: ${JWT_SECRET:}
+  seed:
+    admin-password: ${ADMIN_PASSWORD:}
+    demo-users: false
