@@ -1,6 +1,6 @@
 # ⚡ FlashDeal
 
-**선착순 한정 특가(플래시 딜) 쇼핑몰의 주문·결제 시스템**
+**재고가 한정된 상품에 주문이 몰려도 재고와 돈이 어긋나지 않는 쇼핑몰 주문·결제 시스템**
 
 "재고 100개짜리 상품에 1,000명이 동시에 주문하면 어떻게 될까?"라는 질문에서 시작한 개인 프로젝트입니다.
 트래픽이 한순간에 몰리는 커머스에서 **재고와 돈이 어긋나지 않게** 만드는 것을 목표로, 문제를 직접 재현하고 원인을 찾아 고친 뒤 수치로 확인하는 과정을 기록했습니다.
@@ -28,7 +28,7 @@
 | Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 단일 서버라 로컬 캐시로 충분 |
 | AI | Claude API (Anthropic Java SDK, Structured Outputs) | 응답을 JSON Schema로 강제해서 자유 텍스트 파싱 실패를 없앰. 장애 시 규칙 기반 파서로 폴백 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
-| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions, Docker Compose | 테스트 72개를 H2와 MySQL 양쪽에서 실행 |
+| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions, Docker Compose | 테스트 70개를 H2와 MySQL 양쪽에서 실행 |
 | (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)) |
 
 <br>
@@ -61,7 +61,7 @@
 - [#8] [따닥 클릭과 재전송으로 주문이 두 번 생기는 문제: Idempotency-Key와 유니크 제약](docs/issues/05-idempotency.md)
 - [#9] [PG는 승인했는데 우리 DB는 모를 때: 트랜잭션 분리, UNKNOWN 상태, 대사 배치](docs/issues/06-payment-failure.md)
 - [#10] [거절된 결제를 승인으로 오판할 뻔한 버그: HTTP 200과 결제 상태](docs/issues/06-payment-failure.md)
-- [#11] [재고는 언제 빼야 하나: 주문 시점 선점 + TTL, 그리고 며칠 뒤 사라지는 특가](docs/issues/07-stock-reservation.md)
+- [#11] [재고는 언제 빼야 하나: 주문 시점 선점 + TTL](docs/issues/07-stock-reservation.md)
 - [#12] [주문 목록 조회: N+1은 22 → 3 쿼리, 인덱스로 읽는 행은 994 → 10](docs/issues/08-query-performance.md)
 - [#13] [탈퇴·정지한 회원의 JWT가 계속 살아 있는 문제: token_version과 캐시](docs/issues/09-auth.md)
 - [#14] [로그 저장 때문에 주문이 느려지면 안 된다: 활동 로그 비동기 배치 적재](docs/issues/10-activity-log.md)
@@ -78,7 +78,7 @@
 - **외부 결제 호출은 트랜잭션 밖에서**: PG 지연이 DB 커넥션 고갈로 번지지 않게. 타임아웃은 실패가 아니라 "모름(UNKNOWN)"으로 두고 대사 배치로 확정
 - **돈과 재고가 걸린 순서를 지킴**: 결제 결과를 모르는 주문은 만료·취소 대상에서 제외, 환불은 PG 환불이 성공한 뒤에만 우리 쪽 상태 변경
 - **재고는 덮어쓰지 않고 증감으로**: 관리자 조정과 재고 복구는 `stock = stock + :delta`. 가용 재고와 결제 대기 수량을 따로 표시
-- **테스트는 운영과 같은 DB에서도**: 같은 테스트 72개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **테스트는 운영과 같은 DB에서도**: 같은 테스트 70개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
 - **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), LLM 장애 시 규칙 기반 폴백
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
 
@@ -175,10 +175,7 @@ erDiagram
         int stock
         int sold_count
         bigint version
-        datetime deal_start_at
-        datetime deal_end_at
-        int deal_quantity
-        int per_user_limit
+        int per_user_limit "1인 구매 제한"
         boolean active
         varchar specs "JSON"
         varchar images "JSON"
@@ -241,11 +238,11 @@ erDiagram
 
 | 화면 | 경로 | 주요 기능 |
 |---|---|---|
-| 쇼핑몰 | `/` | 카테고리 사이드바(대분류 › 소분류), 오늘의 특가, 정렬·가격대·품절 필터(URL과 동기화), AI 자연어 검색과 조건 칩, 오타 교정 |
-| 상품 상세 | `/products/:id` | 이미지 갤러리, 할인율, 오픈/마감 카운트다운, 한정 수량 진행바, 1인 구매 제한, 스펙 표 |
+| 쇼핑몰 | `/` | 카테고리 사이드바(대분류 › 소분류), 정렬·가격대·품절 필터(URL과 동기화), AI 자연어 검색과 조건 칩, 오타 교정 |
+| 상품 상세 | `/products/:id` | 이미지 갤러리, 정가·할인율, 재고, 1인 구매 제한, 스펙 표, 같은 카테고리 상품 |
 | 로그인 · 회원가입 | `/login`, `/signup` | 아이디/이메일 로그인, 5회 실패 시 잠금, 아이디 중복 확인 |
 | 내 활동 · 계정 | `/me`, `/me/account` | 주문·결제 내역, 최근 검색어, 최근 본 상품, 모든 기기 로그아웃, 회원 탈퇴 |
-| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품·특가 관리(재고 입고/출고), 주문 관리(취소·환불, 정합성 점검) |
+| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품 관리(재고 입고/출고), 주문 관리(취소·환불, 정합성 점검) |
 
 ### 역할별 권한 (서버에서 검사)
 
@@ -272,7 +269,7 @@ erDiagram
 | GET / DELETE | `/api/me` | USER | 내 정보 / 회원 탈퇴 (비밀번호 확인) |
 | POST | `/api/me/logout-all` | USER | 모든 기기에서 로그아웃 |
 | GET | `/api/categories` | 전체 | 카테고리 트리 + 상품 수 |
-| GET | `/api/products` | 전체 | 목록 (`category, sub, deal, minPrice, maxPrice, excludeSoldOut, keyword, sort`) |
+| GET | `/api/products` | 전체 | 목록 (`category, sub, minPrice, maxPrice, excludeSoldOut, keyword, sort`) |
 | GET | `/api/products/{id}` | 전체 | 상세 (스펙, 이미지, 관련 상품) |
 | GET | `/api/products/search?q=` | 전체 | AI 자연어 검색 |
 | POST | `/api/orders` | USER | 주문 생성 (재고 선점), `Idempotency-Key` 필수 |
@@ -281,7 +278,7 @@ erDiagram
 | GET | `/api/users/{id}/activity` | USER | 내 활동 |
 | GET | `/api/admin/activity`, `/api/admin/activity/summary` | ADMIN | 활동 로그, 대시보드 요약 |
 | GET / PATCH / POST | `/api/admin/users`, `/{id}/status`, `/{id}/logout`, `/{id}/unlock` | ADMIN | 회원 목록, 정지·해제, 강제 로그아웃, 잠금 해제 |
-| GET / POST / PUT / PATCH | `/api/admin/products`, `/{id}`, `/{id}/active` | ADMIN | 상품·특가 관리, 판매 중지 |
+| GET / POST / PUT / PATCH | `/api/admin/products`, `/{id}`, `/{id}/active` | ADMIN | 상품 관리, 판매 중지 |
 | POST | `/api/admin/products/{id}/stock-adjustments` | ADMIN | 재고 조정 `{delta, reason}` (입고 +N / 출고 -N) |
 | GET / POST | `/api/admin/orders`, `/api/admin/orders/{id}/cancel` | ADMIN | 주문 조회, 취소(환불) |
 | GET | `/api/admin/consistency-report` | ADMIN | 주문 ↔ 결제 정합성 리포트 |
@@ -359,6 +356,5 @@ scripts/           상품 이미지 수집
 - **결제 결과 반영은 동기 방식입니다.** 트래픽이 커지면 Outbox 패턴과 메시지 큐로 분리하는 것이 다음 단계입니다.
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.
-- 특가를 상품 속성이 아니라 회차(deal round) 엔티티로 분리하면 회차별 한정 수량과 판매량을 따로 관리할 수 있습니다.
 - CI(GitHub Actions)는 H2로 테스트합니다. Testcontainers로 CI에서도 MySQL 테스트를 돌리는 것이 다음 단계입니다.
 - 아직 검증하지 못한 부분: Claude API 실제 호출(API 키가 없어 제어 흐름만 스텁 테스트로 검증), Docker Compose와 GitHub Actions 워크플로(구성만 해 두고 실행 전)

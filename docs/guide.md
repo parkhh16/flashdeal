@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 72개, H2 (약 2분)
+./gradlew test                                          # 전체 70개, H2 (약 2분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -153,7 +153,7 @@ TOKEN=$(curl -s -X POST localhost:8080/api/auth/login -H 'Content-Type: applicat
 
 # 상품 목록 (필터, 정렬)
 curl 'localhost:8080/api/products?category=MOUSE&sort=PRICE_ASC&excludeSoldOut=true'
-curl 'localhost:8080/api/products?deal=true&sort=DEADLINE'
+curl 'localhost:8080/api/products?keyword=%EB%AC%B4%EC%84%A0&sort=POPULAR'   # keyword=무선 (URL 인코딩)
 
 # 주문 (Idempotency-Key 필수)
 curl -X POST localhost:8080/api/orders -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -170,9 +170,9 @@ curl -G localhost:8080/api/products/search --data-urlencode 'q=5만원 이하 �
 
 ## 8. 기능 둘러보기 (5분)
 
-1. **쇼핑몰**: 사이드바에서 "오늘의 특가" → 마감이 임박한 헤드셋 상세 → 카운트다운, 한정 수량 진행바, "1인 1개" 확인
+1. **쇼핑몰**: 사이드바에서 "키보드" → "무접점 기계식 키보드 리미티드 에디션" 상세 → 정가·할인율, 재고, "1인 2개" 구매 제한 확인
 2. **AI 검색**: "5만원 이하 무선 마우스" 검색 → "이렇게 이해했어요" 조건 칩 → 칩 하나를 빼면 다시 검색. "마으수"처럼 오타를 내면 "마우스"로 교정된 결과
-3. **1인 구매 제한**: user1로 헤드셋 1개 구매 → 한 번 더 구매하면 "1인 1개까지" 안내
+3. **1인 구매 제한**: user1로 리미티드 키보드 2개 구매 → 한 번 더 구매하면 "1인 2개까지" 안내
 4. **관리자 → 활동 로그**: 사용자 "김철수" 선택 → 방금 한 검색, 조회, 주문, 결제 흐름과 traceId 확인
 5. **관리자 → 주문 관리**: 결제 완료 주문 "환불·취소" → 결제 상태 "환불 완료", 재고 복구. "정합성 점검"을 누르면 결제 완료 주문과 승인 금액의 불일치가 0건인지 확인
 6. **JWT 즉시 무효화**: 브라우저 창 두 개(하나는 시크릿 창)에서 한쪽은 새로 가입한 회원, 한쪽은 admin으로 로그인 → 관리자 회원 관리에서 그 회원을 "정지" → 회원 창에서 페이지를 이동하면 토큰 만료를 기다리지 않고 **바로 "이용이 정지된 계정" 안내와 함께 로그인 화면으로** 이동
