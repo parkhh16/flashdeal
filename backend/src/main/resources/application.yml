@@ -1,6 +1,10 @@
 spring:
   application:
     name: flashdeal
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   profiles:
     group:
       # 운영(prod)은 항상 MySQL로 뜬다. SPRING_PROFILES_ACTIVE=prod 하나만 주면 된다
@@ -40,6 +44,9 @@ management:
       # 프록시와 컨테이너 헬스체크가 readiness를 보고 요청을 보낼지 정한다
       probes:
         enabled: true
+  health:
+    redis:
+      enabled: ${flashdeal.redis.enabled:false}
 
 logging:
   pattern:
@@ -68,6 +75,9 @@ flashdeal:
     enabled: true
     expiry-interval: 5s
     reconcile-interval: 10s
+  redis:
+    # 서버를 여러 대 띄울 때 켠다: 사용자 캐시 무효화 전파 (서버 환경 compose에서 true)
+    enabled: false
   dev-tools:
     # 부하 테스트용 재고 전략 전환 API(/api/admin/stock-strategy)를 연다. 운영에서는 반드시 false (NAIVE 전략은 초과 판매가 난다)
     enabled: false

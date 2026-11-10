@@ -24,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
+    // 서버가 여러 대일 때: 사용자 캐시 무효화 전파(Pub/Sub). 꺼져 있으면 연결하지 않는다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     // 서버가 여러 대일 때: 스케줄러를 한 서버에서만 실행 (DB 테이블 락)
     implementation 'net.javacrumbs.shedlock:shedlock-spring:6.6.0'
     implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.6.0'
