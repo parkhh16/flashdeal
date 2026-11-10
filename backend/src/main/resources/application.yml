@@ -66,6 +66,8 @@ flashdeal:
     reconcile-grace: 5s       # REQUESTED/UNKNOWN 상태가 이 시간 이상 지나면 대사 대상
   scheduler:
     enabled: true
+    expiry-interval: 5s
+    reconcile-interval: 10s
   dev-tools:
     # 부하 테스트용 재고 전략 전환 API(/api/admin/stock-strategy)를 연다. 운영에서는 반드시 false (NAIVE 전략은 초과 판매가 난다)
     enabled: false

@@ -1,5 +1,6 @@
 package com.flashdeal.order;
 
+import com.flashdeal.common.cluster.ClusterLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -8,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,9 +26,18 @@ public class OrderExpiryScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final ClusterLock clusterLock;
     private final Clock clock;
 
-    @Scheduled(fixedDelayString = "5s")
+    /**
+     * 서버가 여러 대면 한 서버에서만 실행한다. 락이 없어도 주문의 @Version 덕분에 재고가 두 번 복구되지는 않지만,
+     * 서버마다 같은 주문을 동시에 처리하다 낙관적 락 충돌만 쌓인다.
+     */
+    @Scheduled(fixedDelayString = "${flashdeal.scheduler.expiry-interval:5s}")
+    public void scheduledExpiry() {
+        clusterLock.runExclusively("order-expiry", Duration.ofMinutes(1), this::expireOverdueOrders);
+    }
+
     public int expireOverdueOrders() {
         List<Long> ids = orderRepository.findIdsToExpire(OrderStatus.PENDING_PAYMENT,
                 LocalDateTime.now(clock), PageRequest.of(0, CHUNK));
