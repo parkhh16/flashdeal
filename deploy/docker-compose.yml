@@ -1,12 +1,32 @@
-# 서버 환경: MySQL + 앱 + 웹(Caddy: HTTPS, 정적 파일, /api 프록시)
+# 서버 환경: MySQL + Redis + 앱 2대 + 웹(Caddy: HTTPS, 정적 파일, /api 프록시와 로드 밸런싱)
 #
 #   cd deploy
 #   cp .env.example .env        # 비밀값 채우기 (.env는 git에 올라가지 않는다)
 #   docker compose up -d --build
-#   ./smoke-test.sh             # 프록시를 거쳐 조회, 가입, 주문, 결제까지 확인
+#   ./smoke-test.sh             # 프록시를 거쳐 조회, 가입, 주문, 결제, 서버 간 캐시 무효화까지 확인
 #
 # 테스트 환경(서버 없이 ./gradlew test, CI)과 분리되어 있다. 자세한 내용은 docs/deploy.md
 name: flashdeal
+
+# 앱 서버 공통 설정. app과 app2는 같은 이미지, 같은 설정으로 뜨고 기동 순서만 다르다
+x-app: &app
+  image: ${IMAGE_PREFIX:-flashdeal}-app:${IMAGE_TAG:-local}
+  environment:
+    SPRING_PROFILES_ACTIVE: prod   # prod는 mysql 프로필을 함께 켠다. 비밀값이 없으면 기동하지 않는다
+    DB_HOST: mysql
+    DB_USER: flashdeal
+    DB_PASSWORD: ${DB_PASSWORD}
+    JWT_SECRET: ${JWT_SECRET:?.env에 JWT_SECRET을 설정하세요 (openssl rand -base64 32)}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:?.env에 ADMIN_PASSWORD를 설정하세요 (12자 이상)}
+    SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    # 서버가 여러 대: 사용자 캐시 무효화를 다른 서버에 전파하고, 요청 한도를 Redis 한 곳에서 센다
+    FLASHDEAL_REDIS_ENABLED: "true"
+    REDIS_HOST: redis
+    TZ: Asia/Seoul
+  # 힙은 이 한도의 75% (Dockerfile의 MaxRAMPercentage). 한도가 없으면 두 대가 각자 서버 메모리의 75%를 노린다
+  mem_limit: ${APP_MEMORY_LIMIT:-1g}
+  restart: unless-stopped
 
 services:
   mysql:
@@ -26,33 +46,46 @@ services:
     restart: unless-stopped
     # 포트를 외부에 열지 않는다. 앱만 내부 네트워크로 접속한다
 
+  redis:
+    image: redis:7-alpine
+    # 잃어도 되는 데이터만 둔다 (1분짜리 요청 카운터, 전달 즉시 사라지는 Pub/Sub). 디스크에 쓰지 않는다
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+    # 포트를 외부에 열지 않는다
+
   app:
-    image: ${IMAGE_PREFIX:-flashdeal}-app:${IMAGE_TAG:-local}
+    <<: *app
     build: ../backend
     depends_on:
       mysql:
         condition: service_healthy
-    environment:
-      SPRING_PROFILES_ACTIVE: prod   # prod는 mysql 프로필을 함께 켠다. 비밀값이 없으면 기동하지 않는다
-      DB_HOST: mysql
-      DB_USER: flashdeal
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:?.env에 JWT_SECRET을 설정하세요 (openssl rand -base64 32)}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?.env에 ADMIN_PASSWORD를 설정하세요 (12자 이상)}
-      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      TZ: Asia/Seoul
-    restart: unless-stopped
+      redis:
+        condition: service_healthy
+
+  app2:
+    <<: *app
+    # app이 healthy가 된 뒤에 뜬다. 빈 DB에서 두 대가 동시에 첫 데이터(관리자, 상품)를 넣는 경쟁을 막는다
+    # (스키마 마이그레이션은 Flyway가 DB 락으로 한 대씩 실행한다)
+    depends_on:
+      app:
+        condition: service_healthy
 
   web:
     image: ${IMAGE_PREFIX:-flashdeal}-web:${IMAGE_TAG:-local}
     build: ../frontend
+    # app2는 기동만 기다린다. 준비되기 전까지는 프록시가 헬스 체크로 빼 두고, app2가 죽어도 사이트는 열린다
     depends_on:
       app:
         condition: service_healthy
+      app2:
+        condition: service_started
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
-      APP_UPSTREAMS: app:8080
+      APP_UPSTREAMS: app:8080 app2:8080
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"

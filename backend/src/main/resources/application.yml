@@ -48,6 +48,10 @@ management:
       # 프록시와 컨테이너 헬스체크가 readiness를 보고 요청을 보낼지 정한다
       probes:
         enabled: true
+      group:
+        readiness:
+          # DB에 붙지 못하는 서버에는 트래픽을 보내지 않는다. Redis는 넣지 않는다 (없어도 요청은 처리할 수 있다)
+          include: readinessState,db
   health:
     redis:
       enabled: ${flashdeal.redis.enabled:false}

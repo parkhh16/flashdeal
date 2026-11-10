@@ -64,7 +64,7 @@ jobs:
           scp -i ~/.ssh/deploy_key deploy/docker-compose.yml deploy/smoke-test.sh "$target:~/flashdeal/deploy/"
           ssh -i ~/.ssh/deploy_key "$target" "cd ~/flashdeal/deploy \
             && export IMAGE_PREFIX=$IMAGE_PREFIX IMAGE_TAG=${{ github.sha }} \
-            && docker compose pull app web \
+            && docker compose pull app app2 web \
             && docker compose up -d --no-build --wait --wait-timeout 300"
       - name: 외부에서 스모크 테스트
         if: env.DEPLOY_HOST != '' && env.SMOKE_URL != ''

@@ -42,7 +42,8 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # 서버 환경: 이미지를 빌드해 compose(MySQL + 앱 + Caddy)를 실제로 띄우고, HTTPS 프록시를 거쳐 스모크 테스트
+  # 서버 환경: 이미지를 빌드해 compose(MySQL + Redis + 앱 2대 + Caddy)를 실제로 띄우고, HTTPS 프록시를 거쳐 스모크 테스트
+  # (관리자 비밀번호를 넘기므로 서버 간 캐시 무효화까지 확인한다)
   server-env:
     runs-on: ubuntu-latest
     defaults:

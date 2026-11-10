@@ -2,8 +2,8 @@
 #
 # SITE_ADDRESS   도메인(예: shop.example.com)이면 Let's Encrypt 인증서를 자동으로 받는다
 #                localhost면 Caddy 내부 인증서(브라우저 경고), :80이면 HTTP만
-# APP_UPSTREAMS  앱 서버 목록 (공백으로 구분). 여러 대면 라운드 로빈으로 나누고,
-#                readiness가 DOWN인 서버에는 보내지 않는다
+# APP_UPSTREAMS  앱 서버 목록 (공백으로 구분, 예: "app:8080 app2:8080"). 라운드 로빈으로 나누고,
+#                readiness가 DOWN이거나 연결이 안 되는 서버에는 보내지 않는다
 {$SITE_ADDRESS:localhost} {
 	encode zstd gzip
 
@@ -13,6 +13,10 @@
 			health_uri /actuator/health/readiness
 			health_interval 5s
 			health_timeout 2s
+			# 연결이 안 되는 서버(재시작·배포 중, 죽음)로 간 요청은 다른 서버로 다시 보낸다. 연결 실패는 요청이
+			# 앱에 닿기 전이라 POST도 안전하게 재시도된다. 실패한 서버는 30초 동안 빼 두고 헬스 체크가 다시 판단한다
+			lb_try_duration 3s
+			fail_duration 30s
 		}
 	}
 
