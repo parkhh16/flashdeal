@@ -25,12 +25,14 @@
 | Auth | Spring Security + JWT | 세션 저장소 없이 서버를 늘릴 수 있게. JWT의 약점인 즉시 무효화는 `token_version`으로 보완 ([#13](docs/issues/09-auth.md)) |
 | Database | **MySQL 8 (InnoDB)**, H2 | 락과 격리 수준은 DB마다 다르게 동작해서, 운영과 같은 MySQL에서 측정·테스트. H2는 설치 없는 로컬 실행용 |
 | Migration | Flyway + `ddl-auto: validate` | 스키마 변경 이력을 코드로 관리하고, 엔티티와 스키마 불일치를 서버 기동 시점에 발견 |
-| Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 단일 서버라 로컬 캐시로 충분 |
+| Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 서버가 여러 대여도 캐시는 서버 메모리에 두고 무효화만 전파 |
+| Redis | Pub/Sub, `INCR` 카운터 | 서버 여러 대일 때만: 사용자 캐시 무효화를 모든 서버에 전파, 요청 한도를 한 곳에서 셈. 장애 시 요청은 허용하고 캐시는 TTL로 따라옴 ([#17](docs/issues/13-scale-out.md)) |
+| Scheduler | ShedLock (JDBC) | 만료·대사 스케줄러를 한 서버에서만 실행. 락을 이미 공유하는 DB에 둬서 결제 복구가 Redis에 의존하지 않음 |
 | AI | Claude API (Anthropic Java SDK, Structured Outputs) | 응답을 JSON Schema로 강제해서 자유 텍스트 파싱 실패를 없앰. 장애 시 규칙 기반 파서로 폴백 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
 | Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions | 테스트를 H2와 MySQL 양쪽에서 실행. CI는 테스트, 빌드, 서버 환경 스모크 테스트까지 |
 | Infra | Docker Compose, Caddy | 서버 환경을 파일 하나로 재현. Caddy는 HTTPS 인증서 발급, 정적 파일, 프록시, 헬스체크 기반 라우팅을 설정 몇 줄로 처리 |
-| (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)) |
+| (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)). Redis는 캐시 무효화 전파와 요청 한도 카운터에만 씀 |
 
 <br>
 
@@ -47,6 +49,8 @@
 | PG 승인 직후 우리 서버 장애 | 돈은 빠졌는데 주문은 "결제 중" | 대사 배치가 PG 기준으로 **자동 복구** |
 | 관리자 재고 조정 (데모 DB) | 덮어쓰기 → 한정 100개 상품 재고가 **16,602개**로 부풂 | 증감(입고/출고) 조정으로 실물 수와 일치 |
 | 탈퇴·정지 후 기존 JWT | 만료(2시간)까지 계속 사용 가능 | **다음 요청부터 거부** |
+| 회원 정지 직후, 서버 2대 | 커밋 전 캐시 삭제 + 미전파로 **최대 30초 통과** (한 대에서도 발생) | 커밋 후 삭제 + Redis 전파로 **모든 서버에서 즉시 거부** |
+| 만료·대사 스케줄러, 서버 2대 | 두 서버가 같은 주문을 동시에 처리 | 한 서버만 실행 (DB 락) |
 | 운영 환경변수 누락 | `ADMIN_PASSWORD`가 연결되지 않아 설정해도 `admin/admin` 그대로, 데모 키로도 기동 | 누락·데모값이 하나라도 있으면 **기동 중단** |
 
 <br>
@@ -69,6 +73,7 @@
 - [#14] [로그 저장 때문에 주문이 느려지면 안 된다: 활동 로그 비동기 배치 적재](docs/issues/10-activity-log.md)
 - [#15] [LLM 검색이 상품을 지어내지 않게, 그리고 "마으수"를 "마우스"로: 한글 자모 오타 교정](docs/issues/11-ai-search.md)
 - [#16] [데모 기본값으로 "잘 뜨는" 운영 서버를 막기: 설정 안전장치와 서버 환경 분리](docs/issues/12-production-guard.md)
+- [#17] [서버를 두 대로 늘리면 깨지는 것들: 스케줄러 중복, 캐시 무효화, 요청 한도](docs/issues/13-scale-out.md)
 
 <br>
 
@@ -81,7 +86,8 @@
 - **외부 결제 호출은 트랜잭션 밖에서**: PG 지연이 DB 커넥션 고갈로 번지지 않게. 타임아웃은 실패가 아니라 "모름(UNKNOWN)"으로 두고 대사 배치로 확정
 - **돈과 재고가 걸린 순서를 지킴**: 결제 결과를 모르는 주문은 만료·취소 대상에서 제외, 환불은 PG 환불이 성공한 뒤에만 우리 쪽 상태 변경
 - **재고는 덮어쓰지 않고 증감으로**: 관리자 조정과 재고 복구는 `stock = stock + :delta`. 가용 재고와 결제 대기 수량을 따로 표시
-- **테스트는 운영과 같은 DB에서도**: 같은 테스트 75개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **서버를 늘려도 깨지지 않게**: 정합성은 DB가 지키고, 서버 메모리에 기댄 것만 손봄. 스케줄러는 DB 락으로 한 서버에서만, 사용자 캐시는 커밋 후 삭제하고 다른 서버에 전파, 요청 한도는 공유 카운터
+- **테스트는 운영과 같은 DB에서도**: 같은 테스트 81개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
 - **안전하지 않으면 운영 서버가 뜨지 않게**: 데모 JWT 키, `admin/admin`, 데모 회원, H2, 개발 도구 중 하나라도 남아 있으면 `prod` 프로필 기동을 중단 (fail fast)
 - **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), LLM 장애 시 규칙 기반 폴백
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
@@ -112,9 +118,10 @@ flowchart LR
     API --> ORDER[주문/재고<br/>상태 머신]
     ORDER --> DB[(MySQL / H2<br/>Flyway)]
     API -->|트랜잭션 밖 HTTP<br/>timeout·retry| PG[Mock PG<br/>장애는 테스트에서 주입]
-    RECON[대사 스케줄러 10s] -->|조회| PG
+    RECON[대사 스케줄러 10s<br/>한 서버만] -->|조회| PG
     RECON --> DB
-    EXP[만료 스케줄러 5s] -->|재고 복구| DB
+    EXP[만료 스케줄러 5s<br/>한 서버만] -->|재고 복구| DB
+    API -.서버 여러 대일 때<br/>캐시 무효화 전파·요청 한도.-> REDIS[(Redis)]
     API -.요청마다.-> Q[메모리 큐] -->|300ms 배치 INSERT| LOG[(activity_log)]
     API -->|질의 → 필터| LLM[Claude API]
     LLM -.실패 시.-> RULE[규칙 기반 파서]
@@ -294,7 +301,7 @@ erDiagram
 
 ## 실행 방법
 
-환경은 둘로 나뉩니다. **테스트 환경**은 Docker 없이 바로 돌고, **서버 환경**은 MySQL·앱·HTTPS 프록시를 컨테이너로 함께 띄웁니다 ([서버 환경 가이드](docs/deploy.md)).
+환경은 둘로 나뉩니다. **테스트 환경**은 Docker 없이 바로 돌고, **서버 환경**은 MySQL·Redis·앱 2대·HTTPS 프록시를 컨테이너로 함께 띄웁니다 ([서버 환경 가이드](docs/deploy.md)).
 
 ```bash
 # ── 테스트 환경 (JDK 21, Node 22) ──
@@ -306,8 +313,8 @@ node loadtest/order-rush.mjs --all --stock 2000 --requests 2000  # 부하 테스
 
 # ── 서버 환경 (Docker) ──
 cd deploy && cp .env.example .env                   # 비밀값 채우기
-docker compose up -d --build                        # MySQL + 앱(prod) + Caddy → https://localhost
-./smoke-test.sh                                     # 프록시를 거쳐 조회·가입·주문·결제 확인
+docker compose up -d --build                        # MySQL + Redis + 앱(prod) 2대 + Caddy → https://localhost
+ADMIN_PASSWORD=<.env의 값> ./smoke-test.sh          # 프록시를 거쳐 조회·가입·주문·결제, 서버 간 캐시 무효화, 요청 한도 확인
 ```
 
 | 아이디 | 비밀번호 | 권한 |
@@ -340,14 +347,16 @@ backend/src/main/java/com/flashdeal
 ├── ai/            Claude 질의 파서, 규칙 기반 폴백, 캐시, 오타 교정
 ├── admin/         관리자 API(상품·주문·회원·재고·정합성), 개발 도구(플래그, 기본 꺼짐)
 └── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터, 운영 설정 안전장치(ProductionGuard)
-backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V5)
+    ├── cluster/   서버 여러 대: 스케줄러 락(ShedLock), Redis 켜짐/꺼짐에 따른 무효화 전파·카운터 구성
+    └── ratelimit/ 요청 한도 필터, 메모리·Redis 카운터
+backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V6)
 frontend/src
 ├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문)
 └── components/    헤더, 카테고리 사이드바, 상품 카드, 이미지
 docs/issues/       기술적 이슈별 문제 → 원인 → 해결 → 결과
 docs/guide.md      실행 가이드 (테스트 환경)
 docs/deploy.md     서버 환경 가이드 (Docker, 배포)
-deploy/            서버 환경: docker-compose (MySQL + 앱 + Caddy), .env 예시, 스모크 테스트
+deploy/            서버 환경: docker-compose (MySQL + Redis + 앱 2대 + Caddy), .env 예시, 스모크 테스트
 .github/workflows  ci.yml (테스트, 빌드, 서버 환경 스모크 테스트), deploy.yml (수동 배포)
 loadtest/          HTTP 부하 테스트
 scripts/           상품 이미지 수집
@@ -359,7 +368,7 @@ scripts/           상품 이미지 수집
 
 ## 한계와 다음 단계
 
-- **서버 한 대 기준입니다.** 서버를 여러 대로 늘리면 스케줄러 중복 실행 방지(ShedLock 등), 사용자 상태 캐시 삭제 전파(Redis pub/sub), 인스턴스별 활동 로그 큐를 손봐야 합니다. 멱등성, 재고, 1인 구매 제한은 DB 제약과 락에 기대므로 그대로 동작합니다.
+- **앱 서버는 여러 대, DB는 한 대입니다.** 앱 서버를 늘리는 데 필요한 것(스케줄러 락, 캐시 무효화 전파, 공유 요청 한도)은 갖췄고 서버 환경은 두 대로 뜹니다 ([#17](docs/issues/13-scale-out.md)). DB 이중화(복제, 장애 조치)와 Redis 이중화는 하지 않았습니다. Redis가 죽으면 요청 한도는 허용으로, 캐시 무효화는 TTL(30초)로 물러납니다.
 - **결제 결과 반영은 동기 방식입니다.** 트래픽이 커지면 Outbox 패턴과 메시지 큐로 분리하는 것이 다음 단계입니다.
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.

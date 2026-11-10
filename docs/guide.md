@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V5)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
+- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V6)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
 - `ANTHROPIC_API_KEY`를 설정하면 AI 검색이 Claude API를 사용합니다. 없으면 규칙 기반 파서로 동작합니다.
 - 여기까지가 **테스트 환경**(Docker 불필요)입니다. MySQL, 앱, HTTPS 프록시를 컨테이너로 함께 띄우는 **서버 환경**은 [서버 환경 가이드](deploy.md)에 있습니다 (`deploy/docker-compose.yml`).
 
@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 75개, H2 (약 2분)
+./gradlew test                                          # 전체 81개, H2 (약 2분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -124,6 +124,11 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 | `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
 | `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
 | `flashdeal.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |
+| `flashdeal.scheduler.expiry-interval` / `reconcile-interval` | 5s / 10s | 주문 만료, 결제 대사 주기. 서버가 여러 대여도 한 서버에서만 실행 (ShedLock) |
+| `flashdeal.redis.enabled` | false | 서버를 여러 대 띄울 때 켬 (`FLASHDEAL_REDIS_ENABLED`, 서버 환경 compose에서 true). 사용자 캐시 무효화 전파, 요청 한도 공유 카운터 |
+| `spring.data.redis.host` / `timeout` | localhost / 500ms | Redis 주소(`REDIS_HOST`). 응답이 늦으면 요청 한도는 허용, 캐시 무효화는 TTL(30초)로 물러남 |
+| `flashdeal.rate-limit.enabled` | false | 요청 한도. prod에서 켬 (부하 테스트는 한 IP에서 수천 건을 보내므로 로컬에서는 끔) |
+| `flashdeal.rate-limit.login-per-minute` / `signup-per-minute` / `order-per-minute` | 20 / 10 / 30 | 로그인·가입은 IP당, 주문은 사용자당. 넘으면 429 + `Retry-After` |
 | `spring.profiles.active` | (없음 = 로컬) | `mysql`: MySQL로 실행, `prod`: 운영 (MySQL + 안전장치 + JSON 로그, [서버 환경 가이드](deploy.md)) |
 | `spring.jpa.hibernate.ddl-auto` | validate | 스키마는 Flyway가 관리 |
 | `spring.jpa.properties.hibernate.default_batch_fetch_size` | 100 | N+1 해결 |
@@ -132,7 +137,7 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 ### 스키마 변경 (Flyway)
 
 - `backend/src/main/resources/db/migration/`에 다음 번호의 파일(`V6__설명.sql`)을 추가하고 엔티티를 맞춥니다. 서버를 띄울 때 자동으로 적용되고, JPA `validate`가 엔티티와 스키마의 불일치를 잡아냅니다.
-- 이미 적용된 V1~V5 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
+- 이미 적용된 V1~V6 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
 - H2와 MySQL 양쪽에서 동작하는 문법만 씁니다 (예: `ALTER TABLE ... ADD COLUMN`은 한 문장에 하나씩).
 
 ## 6. 상품 이미지
