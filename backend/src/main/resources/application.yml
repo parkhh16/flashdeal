@@ -5,6 +5,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # 기본값(명령 60초)이면 Redis가 멈췄을 때 로그인·주문이 레이트 리밋 확인에서 그만큼 붙잡힌다.
+      # 짧게 끊고 허용(fail open)한다. 끊긴 동안 쌓이는 명령도 이 시간 안에 실패한다
+      timeout: 500ms
+      connect-timeout: 1s
   profiles:
     group:
       # 운영(prod)은 항상 MySQL로 뜬다. SPRING_PROFILES_ACTIVE=prod 하나만 주면 된다
@@ -76,8 +80,13 @@ flashdeal:
     expiry-interval: 5s
     reconcile-interval: 10s
   redis:
-    # 서버를 여러 대 띄울 때 켠다: 사용자 캐시 무효화 전파 (서버 환경 compose에서 true)
+    # 서버를 여러 대 띄울 때 켠다: 사용자 캐시 무효화 전파, 요청 한도 공유 카운터 (서버 환경 compose에서 true)
     enabled: false
+  rate-limit:
+    enabled: false          # prod 프로필에서 켠다. 부하 테스트는 한 IP에서 수천 건을 보내므로 로컬에서는 끈다
+    login-per-minute: 20    # IP당
+    signup-per-minute: 10   # IP당
+    order-per-minute: 30    # 사용자당
   dev-tools:
     # 부하 테스트용 재고 전략 전환 API(/api/admin/stock-strategy)를 연다. 운영에서는 반드시 false (NAIVE 전략은 초과 판매가 난다)
     enabled: false
@@ -138,6 +147,8 @@ logging:
 flashdeal:
   jwt:
     secret: ${JWT_SECRET:}
+  rate-limit:
+    enabled: true
   seed:
     admin-password: ${ADMIN_PASSWORD:}
     demo-users: false

@@ -2,6 +2,8 @@ package com.flashdeal.common.cluster;
 
 import com.flashdeal.auth.UserAuthCache;
 import com.flashdeal.auth.UserCacheInvalidationPublisher;
+import com.flashdeal.common.ratelimit.RateLimiter;
+import com.flashdeal.common.ratelimit.RedisRateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -12,11 +14,13 @@ import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 
 /**
  * 서버 여러 대 (flashdeal.redis.enabled=true, 서버 환경 compose).
  * - 사용자 캐시 무효화: 상태를 바꾼 서버가 채널에 userId를 보내면, 모든 서버(자기 자신 포함)가 자기 메모리 캐시에서 지운다.
  *   캐시는 여전히 서버 메모리라 인증할 때 네트워크를 타지 않고, 무효화만 Redis로 전파한다.
+ * - 요청 한도: 모든 서버가 같은 카운터를 센다.
  */
 @Slf4j
 @Configuration(proxyBeanMethods = false)
@@ -48,5 +52,10 @@ public class RedisClusterConfig {
             log.debug("event=USER_INVALIDATION_RECEIVED userId={}", userId);
         }, new ChannelTopic(USER_INVALIDATION_CHANNEL));
         return container;
+    }
+
+    @Bean
+    public RateLimiter rateLimiter(StringRedisTemplate redis, Clock clock) {
+        return new RedisRateLimiter(redis, clock);
     }
 }
