@@ -26,8 +26,8 @@ npm install
 npm run dev
 ```
 
-- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V6)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
-- `GEMINI_API_KEY`를 설정하면 AI 검색이 Gemini API를 사용합니다. 없으면 규칙 기반 파서로 동작합니다. 키는 [Google AI Studio](https://aistudio.google.com)에서 무료로 발급받을 수 있고, 결제를 연결하지 않으면 무료 등급에 머뭅니다. 무료 등급에서는 보낸 내용(검색어)이 Google 제품 개선에 쓰일 수 있으며, 사용자 정보는 보내지 않습니다.
+- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V9)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
+- `GEMINI_API_KEY`를 설정하면 새로 등록하거나 고친 상품에 AI 검색 태그가 붙고(1분 안팎), 관리자 "등록 추천"에서 못 찾은 검색어를 AI로 정리할 수 있습니다. 검색은 키가 없어도 똑같이 동작합니다 (검색할 때는 AI를 부르지 않음). 시드 상품의 태그는 미리 만들어 둔 파일에서 읽습니다. 키는 [Google AI Studio](https://aistudio.google.com)에서 무료로 발급받을 수 있고, 결제를 연결하지 않으면 무료 등급에 머뭅니다. 무료 등급에서는 보낸 내용(상품 정보, 못 찾은 검색어)이 Google 제품 개선에 쓰일 수 있으며, 회원 정보는 보내지 않습니다.
 - 여기까지가 **테스트 환경**(Docker 불필요)입니다. MySQL, 앱, HTTPS 프록시를 컨테이너로 함께 띄우는 **서버 환경**은 [서버 환경 가이드](deploy.md)에 있습니다 (`deploy/docker-compose.yml`).
 
 | URL | 용도 |
@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 118개, H2 (약 3분)
+./gradlew test                                          # 전체 129개, H2 (약 3분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -65,8 +65,9 @@ DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트�
 ./gradlew test --tests "*PurchaseRuleTest"              # 1인 구매 제한 (동시 주문 포함), 판매 기간
 ./gradlew test --tests "*AdminFeaturesTest"             # 취소·환불, 재고 증감 조정, @DynamicUpdate
 ./gradlew test --tests "*AuthFlowTest"                  # 가입, 로그인 잠금, 탈퇴, 정지, 강제 로그아웃, 동시 가입
-./gradlew test --tests "*AiSearchServiceTest"           # LLM 캐시, 폴백, 스탬피드 방지
-./gradlew test --tests "*GeminiQueryParserTest"         # Gemini 요청 모양, 응답·오류 처리 (가짜 서버)
+./gradlew test --tests "*GeminiClientTest"              # Gemini 요청 모양, 응답·오류 처리 (가짜 서버)
+./gradlew test --tests "*ProductTag*"                   # AI 태그 검사 규칙, 백그라운드 작업 (실패 시 재시도, 답하는 사이 상품 수정)
+./gradlew test --tests "*DemandServiceTest"             # 등록 추천: 못 찾은 검색 집계, 지어낸 검색어·횟수 차단, 있는 상품인지 다시 검색
 ./gradlew test --tests "*WordSearchTest"                # 단어 검색: 상세·스펙까지, 띄어쓰기·조사, 일부 일치, 제외
 ./gradlew test --tests "*OrderQueryPerformanceTest"     # N+1 쿼리 수, 실행 계획
 ./gradlew searchEval -Plabel=이름                        # 검색 품질 평가 (질의 72개, 리포트 build/reports/search-eval/)
@@ -121,13 +122,15 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 | `flashdeal.pg.connect-timeout` / `read-timeout` | 1s / 2s | PG 타임아웃 |
 | `flashdeal.pg.max-attempts` | 3 | PG 승인 재시도 횟수 (200ms, 400ms 간격) |
 | `flashdeal.payment.reconcile-grace` | 5s | 대사 대상이 되기까지 기다리는 시간 |
-| `flashdeal.ai.api-key` | `GEMINI_API_KEY` | 없으면 규칙 기반 파서 |
-| `flashdeal.ai.model` | gemini-3.5-flash-lite | 질의 해석 모델 |
-| `flashdeal.ai.timeout` | 5s | LLM 타임아웃 (재시도 없이 바로 폴백). 실측 응답 0.8~2.5초 |
+| `flashdeal.ai.api-key` | `GEMINI_API_KEY` | 없으면 AI 태그·등록 추천 정리를 건너뜀 (검색은 그대로) |
+| `flashdeal.ai.model` | gemini-3.5-flash-lite | 태그, 등록 추천에 쓰는 모델 |
+| `flashdeal.ai.timeout` | 30s | 백그라운드 작업이라 넉넉하게. 실측 0.8~2.5초(2026-11-14) ~ 7.5초(2026-11-18). 실패하면 다음 주기에 다시 |
 | `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
 | `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
 | `flashdeal.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |
 | `flashdeal.scheduler.expiry-interval` / `reconcile-interval` | 5s / 10s | 주문 만료, 결제 대사 주기. 서버가 여러 대여도 한 서버에서만 실행 (ShedLock) |
+| `flashdeal.scheduler.tagging-interval` | 1m | 태그 없는 상품에 AI 태그를 붙이는 주기 (한 번에 10개, 한 서버에서만) |
+| `flashdeal.scheduler.demand-cron` | `0 0 4 * * *` | 못 찾은 검색어 AI 정리 (하루 한 번, 실패하면 30초 간격으로 세 번까지) |
 | `flashdeal.redis.enabled` | false | 서버를 여러 대 띄울 때 켬 (`FLASHDEAL_REDIS_ENABLED`, 서버 환경 compose에서 true). 사용자 캐시 무효화 전파, 요청 한도 공유 카운터 |
 | `spring.data.redis.host` / `timeout` | localhost / 500ms | Redis 주소(`REDIS_HOST`). 응답이 늦으면 요청 한도는 허용, 캐시 무효화는 TTL(30초)로 물러남 |
 | `flashdeal.rate-limit.enabled` | false | 요청 한도. prod에서 켬 (부하 테스트는 한 IP에서 수천 건을 보내므로 로컬에서는 끔) |
@@ -139,8 +142,8 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 
 ### 스키마 변경 (Flyway)
 
-- `backend/src/main/resources/db/migration/`에 다음 번호의 파일(`V6__설명.sql`)을 추가하고 엔티티를 맞춥니다. 서버를 띄울 때 자동으로 적용되고, JPA `validate`가 엔티티와 스키마의 불일치를 잡아냅니다.
-- 이미 적용된 V1~V6 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
+- `backend/src/main/resources/db/migration/`에 다음 번호의 파일(`V10__설명.sql`)을 추가하고 엔티티를 맞춥니다. 기존 행을 코드로 채워야 하면 Java 마이그레이션(`backend/src/main/java/db/migration/`, 예: V7)을 씁니다. 서버를 띄울 때 자동으로 적용되고, JPA `validate`가 엔티티와 스키마의 불일치를 잡아냅니다.
+- 이미 적용된 V1~V9 파일은 수정하지 않습니다 (체크섬 불일치로 기동 실패).
 - H2와 MySQL 양쪽에서 동작하는 문법만 씁니다 (예: `ALTER TABLE ... ADD COLUMN`은 한 문장에 하나씩).
 
 ## 6. 상품 이미지

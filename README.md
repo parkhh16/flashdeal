@@ -25,10 +25,10 @@
 | Auth | Spring Security + JWT | 세션 저장소 없이 서버를 늘릴 수 있게. JWT의 약점인 즉시 무효화는 `token_version`으로 보완 ([#13](docs/issues/09-auth.md)) |
 | Database | **MySQL 8 (InnoDB)**, H2 | 락과 격리 수준은 DB마다 다르게 동작해서, 운영과 같은 MySQL에서 측정·테스트. H2는 설치 없는 로컬 실행용 |
 | Migration | Flyway + `ddl-auto: validate` | 스키마 변경 이력을 코드로 관리하고, 엔티티와 스키마 불일치를 서버 기동 시점에 발견 |
-| Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 서버가 여러 대여도 캐시는 서버 메모리에 두고 무효화만 전파 |
+| Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회를 요청마다 DB 없이 처리. 서버가 여러 대여도 캐시는 서버 메모리에 두고 무효화만 전파 |
 | Redis | Pub/Sub, `INCR` 카운터 | 서버 여러 대일 때만: 사용자 캐시 무효화를 모든 서버에 전파, 요청 한도를 한 곳에서 셈. 장애 시 요청은 허용하고 캐시는 TTL로 따라옴 ([#17](docs/issues/13-scale-out.md)) |
 | Scheduler | ShedLock (JDBC) | 만료·대사 스케줄러를 한 서버에서만 실행. 락을 이미 공유하는 DB에 둬서 결제 복구가 Redis에 의존하지 않음 |
-| AI | Gemini API (REST, 응답 JSON Schema 강제) | 응답 형식을 스키마로 강제해서 자유 텍스트 파싱 실패를 없앰. LLM 공급자는 `QueryParser` 인터페이스 뒤에 두고, 키가 없거나 장애 시 규칙 기반 파서로 폴백 |
+| AI | Gemini API (REST, 응답 JSON Schema 강제) | 손님이 기다리지 않는 곳에서만 호출: 상품 등록 후 검색 태그 만들기, 하루 한 번 못 찾은 검색어 정리. AI가 판단하고 사실(근거 없는 기능, 검색 횟수, 있는 상품인지)은 코드가 확인. 검색 자체는 규칙과 단어 매칭이라 키가 없어도 동작 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
 | Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions | 테스트를 H2와 MySQL 양쪽에서 실행. CI는 테스트, 빌드, 서버 환경 스모크 테스트까지 |
 | Infra | Docker Compose, Caddy | 서버 환경을 파일 하나로 재현. Caddy는 HTTPS 인증서 발급, 정적 파일, 프록시, 헬스체크 기반 라우팅을 설정 몇 줄로 처리 |
@@ -71,7 +71,7 @@
 - [#12] [주문 목록 조회: N+1은 22 → 3 쿼리, 인덱스로 읽는 행은 994 → 10](docs/issues/08-query-performance.md)
 - [#13] [탈퇴·정지한 회원의 JWT가 계속 살아 있는 문제: token_version과 캐시](docs/issues/09-auth.md)
 - [#14] [로그 저장 때문에 주문이 느려지면 안 된다: 활동 로그 비동기 배치 적재](docs/issues/10-activity-log.md)
-- [#15] [LLM 검색이 상품을 지어내지 않게, 그리고 "마으수"를 "마우스"로: 한글 자모 오타 교정](docs/issues/11-ai-search.md)
+- [#15] [자연어 검색: 검색마다 부르던 LLM을 빼고, AI는 상품 태그와 등록 추천으로](docs/issues/11-ai-search.md)
 - [#16] [데모 기본값으로 "잘 뜨는" 운영 서버를 막기: 설정 안전장치와 서버 환경 분리](docs/issues/12-production-guard.md)
 - [#17] [서버를 두 대로 늘리면 깨지는 것들: 스케줄러 중복, 캐시 무효화, 요청 한도](docs/issues/13-scale-out.md)
 
@@ -89,7 +89,7 @@
 - **서버를 늘려도 깨지지 않게**: 정합성은 DB가 지키고, 서버 메모리에 기댄 것만 손봄. 스케줄러는 DB 락으로 한 서버에서만, 사용자 캐시는 커밋 후 삭제하고 다른 서버에 전파, 요청 한도는 공유 카운터
 - **테스트는 운영과 같은 DB에서도**: 같은 테스트 81개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
 - **안전하지 않으면 운영 서버가 뜨지 않게**: 데모 JWT 키, `admin/admin`, 데모 회원, H2, 개발 도구 중 하나라도 남아 있으면 `prod` 프로필 기동을 중단 (fail fast)
-- **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), LLM 장애 시 규칙 기반 폴백
+- **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), AI는 검색·상품 저장 요청 밖의 백그라운드 작업에서만 호출하고 실패하면 다음 주기에 다시
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
 
 <br>
@@ -123,8 +123,11 @@ flowchart LR
     EXP[만료 스케줄러 5s<br/>한 서버만] -->|재고 복구| DB
     API -.서버 여러 대일 때<br/>캐시 무효화 전파·요청 한도.-> REDIS[(Redis)]
     API -.요청마다.-> Q[메모리 큐] -->|300ms 배치 INSERT| LOG[(activity_log)]
-    API -->|질의 → 필터| LLM[Gemini API]
-    LLM -.실패 시.-> RULE[규칙 기반 파서]
+    API -->|검색: 규칙 파서 + 단어 매칭| DB
+    TAG[태그 작업 1m<br/>한 서버만] -->|상품 정보 → 검색 태그| LLM[Gemini API]
+    DEM[등록 추천 하루 1번<br/>한 서버만] -->|못 찾은 검색어 묶기| LLM
+    TAG --> DB
+    DEM -->|activity_log 집계| LOG
 ```
 
 ### 결제 흐름
@@ -249,11 +252,11 @@ erDiagram
 
 | 화면 | 경로 | 주요 기능 |
 |---|---|---|
-| 쇼핑몰 | `/` | 카테고리 사이드바(대분류 › 소분류), 정렬·가격대·품절 필터(URL과 동기화), AI 자연어 검색과 조건 칩, 오타 교정 |
+| 쇼핑몰 | `/` | 카테고리 사이드바(대분류 › 소분류), 정렬·가격대·품절 필터(URL과 동기화), 자연어 검색(띄어쓰기·조사·만원대·제외어, AI 태그)과 조건 칩, 오타 교정, 일부만 맞을 때 안내 |
 | 상품 상세 | `/products/:id` | 이미지 갤러리, 정가·할인율, 재고, 1인 구매 제한, 스펙 표, 같은 카테고리 상품 |
 | 로그인 · 회원가입 | `/login`, `/signup` | 아이디/이메일 로그인, 5회 실패 시 잠금, 아이디 중복 확인 |
 | 내 활동 · 계정 | `/me`, `/me/account` | 주문·결제 내역, 최근 검색어, 최근 본 상품, 모든 기기 로그아웃, 회원 탈퇴 |
-| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품 관리(재고 입고/출고), 주문 관리(취소·환불, 정합성 점검) |
+| 관리자 | `/admin` | 대시보드(요청 수, 에러율, 응답 시간), 활동 로그(사용자별 타임라인, traceId), 회원 관리(정지, 강제 로그아웃, 잠금 해제), 상품 관리(재고 입고/출고, AI 태그), 주문 관리(취소·환불, 정합성 점검), 등록 추천(손님이 찾았지만 없던 상품) |
 
 ### 역할별 권한 (서버에서 검사)
 
@@ -282,7 +285,7 @@ erDiagram
 | GET | `/api/categories` | 전체 | 카테고리 트리 + 상품 수 |
 | GET | `/api/products` | 전체 | 목록 (`category, sub, minPrice, maxPrice, excludeSoldOut, keyword, sort`) |
 | GET | `/api/products/{id}` | 전체 | 상세 (스펙, 이미지, 관련 상품) |
-| GET | `/api/products/search?q=` | 전체 | AI 자연어 검색 |
+| GET | `/api/products/search?q=` | 전체 | 자연어 검색 (검색할 때 LLM은 부르지 않음) |
 | POST | `/api/orders` | USER | 주문 생성 (재고 선점), `Idempotency-Key` 필수 |
 | POST | `/api/orders/{id}/payment` | USER | 결제, `Idempotency-Key` 필수 (200 완료 / 202 확인 중 / 402 거절) |
 | GET | `/api/orders`, `/api/orders/{id}` | USER | 내 주문 |
@@ -293,6 +296,7 @@ erDiagram
 | POST | `/api/admin/products/{id}/stock-adjustments` | ADMIN | 재고 조정 `{delta, reason}` (입고 +N / 출고 -N) |
 | GET / POST | `/api/admin/orders`, `/api/admin/orders/{id}/cancel` | ADMIN | 주문 조회, 취소(환불) |
 | GET | `/api/admin/consistency-report` | ADMIN | 주문 ↔ 결제 정합성 리포트 |
+| GET / POST | `/api/admin/demand`, `/api/admin/demand/report` | ADMIN | 못 찾은 검색어 집계 / 지금 AI로 다시 정리 |
 | GET / PUT | `/api/admin/stock-strategy`, `/api/admin/stock-strategy/{type}` | ADMIN | 재고 전략 조회 / 전환. **개발 도구 플래그를 켠 경우에만 존재** (`flashdeal.dev-tools.enabled`, 기본값 꺼짐). 부하 테스트용 |
 
 </details>
@@ -344,14 +348,14 @@ backend/src/main/java/com/flashdeal
 ├── mockpg/        가짜 PG 서버 + 장애 설정 (테스트가 코드에서 바꿈)
 ├── idempotency/   Idempotency-Key 처리
 ├── activity/      활동 로그 필터, 비동기 배치 적재, 조회 API
-├── ai/            LLM 질의 파서(Gemini), 규칙 기반 폴백, 캐시, 오타 교정
+├── ai/            검색어 해석(규칙), 오타 교정, Gemini 클라이언트, 상품 태그 작업, 등록 추천
 ├── admin/         관리자 API(상품·주문·회원·재고·정합성), 개발 도구(플래그, 기본 꺼짐)
 └── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터, 운영 설정 안전장치(ProductionGuard)
     ├── cluster/   서버 여러 대: 스케줄러 락(ShedLock), Redis 켜짐/꺼짐에 따른 무효화 전파·카운터 구성
     └── ratelimit/ 요청 한도 필터, 메모리·Redis 카운터
-backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V6)
+backend/src/main/resources/db/migration   Flyway 마이그레이션 (V1~V9, V7은 기존 상품을 채우는 Java 마이그레이션이라 src/main/java/db/migration)
 frontend/src
-├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문)
+├── pages/         쇼핑, 상세, 내 활동, auth/(로그인·가입·계정), admin/(대시보드·로그·회원·상품·주문·등록 추천)
 └── components/    헤더, 카테고리 사이드바, 상품 카드, 이미지
 docs/issues/       기술적 이슈별 문제 → 원인 → 해결 → 결과
 docs/guide.md      실행 가이드 (테스트 환경)
@@ -373,4 +377,4 @@ scripts/           상품 이미지 수집
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.
 - CI(GitHub Actions)는 H2로 테스트합니다. Testcontainers로 CI에서도 MySQL 테스트를 돌리는 것이 다음 단계입니다.
-- Gemini 실제 호출은 검색어 십여 개로 직접 확인했습니다 (결과는 [AI 검색 문서](docs/issues/11-ai-search.md)). 검색어 수십 개로 정확도를 수치로 재는 평가셋이 다음 단계입니다.
+- 검색 품질은 질의 72개 평가셋으로 잽니다 (◎ 정확 28 → 66). 이 질의들은 규칙을 다듬으면서 본 것이라, 만든 사람이 보지 않은 질의로 다시 재는 것이 다음 단계입니다. 등록 추천의 검색 기록은 시연용으로 만든 데이터입니다 ([#15](docs/issues/11-ai-search.md)).
