@@ -95,9 +95,10 @@ flashdeal:
     # 부하 테스트용 재고 전략 전환 API(/api/admin/stock-strategy)를 연다. 운영에서는 반드시 false (NAIVE 전략은 초과 판매가 난다)
     enabled: false
   ai:
-    api-key: ${ANTHROPIC_API_KEY:}
-    model: claude-opus-5
-    timeout: 8s
+    # 키가 없으면 규칙 기반 파서만 쓴다. 키는 환경변수로만 받는다 (저장소·설정 파일에 넣지 않음)
+    api-key: ${GEMINI_API_KEY:}
+    model: gemini-3.5-flash-lite   # 무료 등급에서 쓸 수 있는 안정 버전 중 가장 빠른 모델
+    timeout: 5s                    # 실측 0.7~2.5초(첫 호출이 가장 느림). 넘으면 재시도 없이 규칙 기반 파서로
   seed:
     enabled: true
     # 처음 시드될 때(회원 테이블이 비어 있을 때)만 적용된다

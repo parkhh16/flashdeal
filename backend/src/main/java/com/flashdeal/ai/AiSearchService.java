@@ -37,7 +37,7 @@ public class AiSearchService {
     private record Parsed(SearchFilter filter, ParsedBy by, String reason) {
     }
 
-    private final ClaudeQueryParser claude;
+    private final QueryParser llm;
     private final RuleBasedQueryParser rules;
     private final ProductRepository productRepository;
     private final Cache<String, Parsed> cache = Caffeine.newBuilder()
@@ -47,10 +47,10 @@ public class AiSearchService {
 
     private final TypoCorrector typoCorrector;
 
-    public AiSearchService(ClaudeQueryParser claude, RuleBasedQueryParser rules, ProductRepository productRepository,
+    public AiSearchService(QueryParser llm, RuleBasedQueryParser rules, ProductRepository productRepository,
                            TypoCorrector typoCorrector) {
         this.typoCorrector = typoCorrector;
-        this.claude = claude;
+        this.llm = llm;
         this.rules = rules;
         this.productRepository = productRepository;
     }
@@ -123,11 +123,11 @@ public class AiSearchService {
     }
 
     private Parsed parse(String query) {
-        if (!claude.isEnabled()) {
-            return new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, "ANTHROPIC_API_KEY not configured");
+        if (!llm.isEnabled()) {
+            return new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, "GEMINI_API_KEY not configured");
         }
         try {
-            Optional<SearchFilter> filter = claude.parse(query);
+            Optional<SearchFilter> filter = llm.parse(query);
             return filter.map(f -> new Parsed(f, ParsedBy.LLM, null))
                     .orElseGet(() -> new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, "LLM returned no usable output"));
         } catch (RuntimeException e) {
