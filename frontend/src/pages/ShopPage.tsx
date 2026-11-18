@@ -166,6 +166,14 @@ export function ShopPage() {
             <Link to={`/?q=${encodeURIComponent(ai.originalQuery)}&exact=1`}>"{ai.originalQuery}"(으)로 검색하기</Link>
           </p>
         )}
+        {ai?.match === 'SOME_WORDS' && (
+          <p className="corrected">검색어의 단어가 모두 들어간 상품이 없어, 가장 많이 맞는 상품을 보여 드려요.</p>
+        )}
+        {ai?.match === 'RELAXED' && (
+          <p className="corrected">
+            <strong>"{ai.filter.keyword}"</strong>에 맞는 상품이 없어 {conditions.filter(c => c.key !== 'keyword').map(c => c.label).join(' · ')} 조건으로만 찾았어요.
+          </p>
+        )}
       </div>
 
       {(ai || conditions.length > 0) && (
@@ -177,6 +185,7 @@ export function ShopPage() {
               <button onClick={c.remove} aria-label={`${c.label} 조건 빼고 다시 검색`}>×</button>
             </span>
           ))}
+          {ai?.filter.excludes?.map(e => <span key={`ex-${e}`} className="chip static">"{e}" 제외</span>)}
           {ai && conditions.length === 0 && <span className="chip static">가격·카테고리 조건 없음</span>}
           {conditions.length > 1 && <Link to="/" className="muted clear-link">모두 지우기</Link>}
         </div>

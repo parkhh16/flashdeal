@@ -53,17 +53,4 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Modifying
     @Query("update Product p set p.stock = p.stock + :qty, p.soldCount = p.soldCount - :qty, p.version = p.version + 1 where p.id = :id")
     int increaseStock(@Param("id") Long id, @Param("qty") int qty);
-
-    @Query("select p from Product p " +
-            "where p.active = true " +
-            "and (:category is null or p.category = :category) " +
-            "and (:minPrice is null or p.price >= :minPrice) " +
-            "and (:maxPrice is null or p.price <= :maxPrice) " +
-            "and (:keyword is null or lower(p.name) like lower(concat('%', :keyword, '%')) " +
-            "     or lower(p.description) like lower(concat('%', :keyword, '%'))) " +
-            "order by p.price asc")
-    List<Product> search(@Param("category") ProductCategory category,
-                         @Param("minPrice") Long minPrice,
-                         @Param("maxPrice") Long maxPrice,
-                         @Param("keyword") String keyword);
 }

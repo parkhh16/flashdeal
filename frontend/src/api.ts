@@ -22,10 +22,15 @@ export interface Order {
   expiresAt: string; createdAt: string; items: OrderItem[]
 }
 export interface Page<T> { content: T[]; page: number; size: number; totalElements: number; totalPages: number }
-export interface SearchFilter { keyword: string | null; category: Category | null; minPrice: number | null; maxPrice: number | null }
+export interface SearchFilter {
+  keyword: string | null; category: Category | null; minPrice: number | null; maxPrice: number | null; excludes: string[]
+}
+/** ALL_WORDS: 검색어 단어가 모두 맞음 / SOME_WORDS: 가장 많이 맞는 상품 / RELAXED: 단어 없이 카테고리·가격만 / NONE: 결과 없음 */
+export type SearchMatch = 'ALL_WORDS' | 'SOME_WORDS' | 'RELAXED' | 'NONE'
 export interface AiSearchResult {
   query: string; parsedBy: 'LLM' | 'LLM_CACHED' | 'RULE_FALLBACK'; filter: SearchFilter
   fallbackReason: string | null; parseMillis: number; products: Product[]; originalQuery: string | null
+  match: SearchMatch
 }
 export interface PaymentResult { orderId: number; paymentKey: string; status: string; message: string }
 export interface Mismatch { orderId: number; orderNo: string; orderStatus: string; orderAmount: number; approvedAmount: number }
