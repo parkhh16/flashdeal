@@ -21,4 +21,4 @@ flashdeal:
   payment:
     reconcile-grace: 0s
   ai:
-    api-key: ""           # 테스트는 LLM을 호출하지 않는다 (폴백 경로 검증)
+    api-key: ""           # 테스트는 실제 Gemini를 호출하지 않는다

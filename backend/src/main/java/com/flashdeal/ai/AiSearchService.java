@@ -1,7 +1,5 @@
 package com.flashdeal.ai;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.flashdeal.product.ProductDtos.ProductResponse;
 import com.flashdeal.product.ProductQueryService;
 import com.flashdeal.product.ProductQueryService.WordQuery;
@@ -10,22 +8,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * 자연어 상품 검색.
- * - 캐시: 같은 질의를 다시 파싱하지 않는다 (LLM 비용과 지연 절감). Caffeine의 get(key, loader)는
- *   같은 키에 동시 요청이 몰려도 로더를 한 번만 실행한다 → 캐시 스탬피드(동시 LLM 호출 폭주) 방지
- * - 폴백: 키가 없거나, 타임아웃이나 에러가 나면 규칙 기반 파서로 대체한다. 폴백 결과는 캐시하지 않아서 LLM이 복구되면 바로 돌아온다
- * - 재고는 캐시하지 않는다: 초 단위로 바뀌는 값이라 캐시하면 품절 상품이 구매 가능해 보인다. 캐시하는 건 "질의 → 필터" 매핑뿐이다
+ * 자연어 상품 검색. 검색어 해석은 규칙 기반 파서가 하고, 검색할 때 LLM은 부르지 않는다.
+ *
+ * <p>처음에는 검색마다 Gemini로 검색어를 해석했지만, 응답이 0.8~2.5초에서 7.5초까지 느려지면서
+ * 매 검색이 타임아웃(5초)을 기다린 뒤 규칙 기반으로 넘어가게 됐다. 그래서 손님이 기다리는 경로에서는 LLM을 부르지 않는다.
  */
 @Slf4j
 @Service
 public class AiSearchService {
-
-    public enum ParsedBy {LLM, LLM_CACHED, RULE_FALLBACK}
 
     /**
      * 결과가 어떻게 나왔는지. 화면은 이걸 보고 "일부 단어만 맞는 상품이에요"처럼 알려 준다
@@ -33,34 +27,24 @@ public class AiSearchService {
      */
     public enum Match {ALL_WORDS, SOME_WORDS, RELAXED, NONE}
 
-    public record AiSearchResponse(String query, ParsedBy parsedBy, SearchFilter filter, String fallbackReason,
-                                   long parseMillis, List<ProductResponse> products, String originalQuery, Match match) {
+    public record AiSearchResponse(String query, SearchFilter filter, List<ProductResponse> products,
+                                   String originalQuery, Match match) {
 
         /** 오타 교정으로 찾은 결과면, 사용자가 실제로 입력한 검색어를 함께 돌려준다 */
         AiSearchResponse withOriginalQuery(String original) {
-            return new AiSearchResponse(query, parsedBy, filter, fallbackReason, parseMillis, products, original, match);
+            return new AiSearchResponse(query, filter, products, original, match);
         }
 
         AiSearchResponse with(List<ProductResponse> products, Match match) {
-            return new AiSearchResponse(query, parsedBy, filter, fallbackReason, parseMillis, products, originalQuery, match);
+            return new AiSearchResponse(query, filter, products, originalQuery, match);
         }
     }
 
-    private record Parsed(SearchFilter filter, ParsedBy by, String reason) {
-    }
-
-    private final QueryParser llm;
     private final RuleBasedQueryParser rules;
     private final ProductQueryService products;
     private final TypoCorrector typoCorrector;
-    private final Cache<String, Parsed> cache = Caffeine.newBuilder()
-            .maximumSize(1_000)
-            .expireAfterWrite(Duration.ofMinutes(30))
-            .build();
 
-    public AiSearchService(QueryParser llm, RuleBasedQueryParser rules, ProductQueryService products,
-                           TypoCorrector typoCorrector) {
-        this.llm = llm;
+    public AiSearchService(RuleBasedQueryParser rules, ProductQueryService products, TypoCorrector typoCorrector) {
         this.rules = rules;
         this.products = products;
         this.typoCorrector = typoCorrector;
@@ -117,26 +101,10 @@ public class AiSearchService {
     }
 
     private AiSearchResponse searchAllWords(String query) {
-        long start = System.nanoTime();
-
-        boolean[] loaded = {false};
-        Parsed parsed = cache.get(query.toLowerCase(), key -> {
-            loaded[0] = true;
-            return parse(query);
-        });
-        if (parsed.by() == ParsedBy.RULE_FALLBACK) {
-            cache.invalidate(query.toLowerCase());
-        } else if (!loaded[0]) {
-            parsed = new Parsed(parsed.filter(), ParsedBy.LLM_CACHED, null);
-        }
-        long parseMillis = (System.nanoTime() - start) / 1_000_000;
-
-        SearchFilter f = parsed.filter();
+        SearchFilter f = rules.parse(query);
         List<ProductResponse> found = products.findAllWords(toWordQuery(f));
-        log.info("event=AI_SEARCH query=\"{}\" by={} filter={} results={} parseMs={}",
-                query, parsed.by(), f, found.size(), parseMillis);
-        return new AiSearchResponse(query, parsed.by(), f, parsed.reason(), parseMillis, found, null,
-                found.isEmpty() ? Match.NONE : Match.ALL_WORDS);
+        log.info("event=AI_SEARCH query=\"{}\" filter={} results={}", query, f, found.size());
+        return new AiSearchResponse(query, f, found, null, found.isEmpty() ? Match.NONE : Match.ALL_WORDS);
     }
 
     /**
@@ -150,19 +118,5 @@ public class AiSearchService {
         List<String> words = all.stream().filter(w -> !w.equals(head)).distinct().toList();
         List<String> excludes = f.excludes().stream().flatMap(e -> SearchText.words(e).stream()).toList();
         return new WordQuery(f.category(), f.minPrice(), f.maxPrice(), required, words, excludes);
-    }
-
-    private Parsed parse(String query) {
-        if (!llm.isEnabled()) {
-            return new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, "GEMINI_API_KEY not configured");
-        }
-        try {
-            Optional<SearchFilter> filter = llm.parse(query);
-            return filter.map(f -> new Parsed(f, ParsedBy.LLM, null))
-                    .orElseGet(() -> new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, "LLM returned no usable output"));
-        } catch (RuntimeException e) {
-            log.warn("event=AI_FALLBACK query=\"{}\" cause={}", query, e.toString());
-            return new Parsed(rules.parse(query), ParsedBy.RULE_FALLBACK, e.getClass().getSimpleName());
-        }
     }
 }

@@ -47,14 +47,14 @@ public class ProductController {
         return productQueryService.detail(id);
     }
 
-    @Operation(summary = "AI 자연어 검색", description = "예: \"5만원 이하 무선 마우스\". LLM은 필터만 만들고 상품은 DB에서 조회한다. LLM 장애 시 규칙 기반으로 폴백")
+    @Operation(summary = "자연어 검색", description = "예: \"5만원 이하 무선 마우스\". 검색할 때 LLM은 부르지 않고, 규칙 기반 파서와 단어 매칭으로 찾는다")
     @GetMapping("/api/products/search")
     public AiSearchResponse aiSearch(@RequestParam @NotBlank @Size(max = 100) String q,
                                      @RequestParam(defaultValue = "true") boolean correct) {
         AiSearchResponse result = aiSearchService.search(q, correct);
         ActivityContext.put("q", result.query());
         ActivityContext.put("results", result.products().size());
-        ActivityContext.put("parsedBy", result.parsedBy());
+        ActivityContext.put("match", result.match()); // 결과가 어느 단계에서 나왔는지 (모두 맞음, 일부, 완화, 없음)
         ActivityContext.put("correctedFrom", result.originalQuery());
         return result;
     }
