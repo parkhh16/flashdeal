@@ -121,4 +121,116 @@ class RuleBasedQueryParserTest {
         assertThat(negative.minPrice()).isNull();
         assertThat(negative.maxPrice()).isNull();
     }
+
+    @Test
+    @DisplayName("상품 종류 단어가 여럿이면 맨 뒤가 중심: '마우스 패드'는 패드(액세서리), '키보드 꾸미기용 키캡'은 키캡")
+    void headWordDecidesCategory() {
+        SearchFilter pad = parser.parse("마우스 패드");
+        assertThat(pad.category()).isEqualTo(ProductCategory.ACCESSORY);
+        assertThat(pad.keyword()).isEqualTo("마우스 패드");
+
+        assertThat(parser.parse("키보드 꾸미기용 키캡").category()).isEqualTo(ProductCategory.ACCESSORY);
+        assertThat(parser.parse("맥북에 모니터랑 USB 연결할 허브").category()).isEqualTo(ProductCategory.ACCESSORY);
+        assertThat(parser.parse("헤드셋 거치대").category()).isEqualTo(ProductCategory.ACCESSORY);
+    }
+
+    @Test
+    @DisplayName("붙여 쓴 말을 띄운다: '마우스패드' = '마우스 패드', '무선마우스' = '무선 마우스'. 남는 쪽이 한 글자면 그대로('장패드')")
+    void splitCompounds() {
+        assertThat(parser.parse("마우스패드").keyword()).isEqualTo("마우스 패드");
+        assertThat(parser.parse("마우스패드").category()).isEqualTo(ProductCategory.ACCESSORY);
+
+        SearchFilter mouse = parser.parse("무선마우스");
+        assertThat(mouse.category()).isEqualTo(ProductCategory.MOUSE);
+        assertThat(mouse.keyword()).isEqualTo("무선");
+
+        assertThat(parser.parse("장패드").keyword()).isEqualTo("장패드");
+        assertThat(RuleBasedQueryParser.splitCompounds("모니터랑 허브")).isEqualTo("모니터랑 허브");
+    }
+
+    @Test
+    @DisplayName("가격대: '5만원대' = 5만~59,999원, '만원대' = 1만~19,999원, '10만원대' = 10만~199,999원")
+    void priceBand() {
+        SearchFilter five = parser.parse("5만원대 마우스");
+        assertThat(five.minPrice()).isEqualTo(50_000);
+        assertThat(five.maxPrice()).isEqualTo(59_999);
+        assertThat(five.keyword()).isNull();
+
+        SearchFilter ten = parser.parse("만원대 장패드");
+        assertThat(ten.minPrice()).isEqualTo(10_000);
+        assertThat(ten.maxPrice()).isEqualTo(19_999);
+
+        assertThat(parser.parse("10만원대 헤드셋").maxPrice()).isEqualTo(199_999);
+        assertThat(RuleBasedQueryParser.bandWidth(150_000)).isEqualTo(10_000);
+        assertThat(parser.parse("10대 키보드").minPrice()).as("단위가 없으면 가격대가 아니다").isNull();
+    }
+
+    @Test
+    @DisplayName("가격 조건 두 개: '20만원 이상 30만원 이하', 상한 표현 '안쪽'")
+    void twoPriceBounds() {
+        SearchFilter f = parser.parse("20만원 이상 30만원 이하");
+        assertThat(f.minPrice()).isEqualTo(200_000);
+        assertThat(f.maxPrice()).isEqualTo(300_000);
+        assertThat(f.keyword()).isNull();
+
+        assertThat(parser.parse("십만원 안쪽 헤드셋").maxPrice()).isEqualTo(100_000);
+        assertThat(parser.parse("144Hz 이상 모니터").minPrice()).as("단위가 Hz면 가격이 아니다").isNull();
+    }
+
+    @Test
+    @DisplayName("제외 조건: '게이밍 말고', '유선 아닌'은 키워드가 아니라 뺄 단어")
+    void excludes() {
+        SearchFilter f = parser.parse("게이밍 말고 사무용 모니터");
+        assertThat(f.excludes()).containsExactly("게이밍");
+        assertThat(f.keyword()).isEqualTo("사무");
+        assertThat(f.category()).isEqualTo(ProductCategory.MONITOR);
+
+        SearchFilter earphone = parser.parse("헤드셋 말고 이어폰");
+        assertThat(earphone.excludes()).containsExactly("헤드셋");
+        assertThat(earphone.keyword()).isEqualTo("이어폰");
+    }
+
+    @Test
+    @DisplayName("영어 상품명과 가격: 'wireless mouse under 30000', 'gaming headset'")
+    void english() {
+        SearchFilter mouse = parser.parse("wireless mouse under 30000");
+        assertThat(mouse.category()).isEqualTo(ProductCategory.MOUSE);
+        assertThat(mouse.maxPrice()).isEqualTo(30_000);
+        assertThat(mouse.keyword()).isEqualTo("wireless");
+
+        SearchFilter headset = parser.parse("gaming headset");
+        assertThat(headset.category()).isEqualTo(ProductCategory.AUDIO);
+        assertThat(headset.keyword()).as("좁은 종류는 한글로 남긴다").isEqualTo("gaming 헤드셋");
+    }
+
+    @Test
+    @DisplayName("상품 종류의 끝 글자 오타: '키보트' → 키보드, '헤드폰' → 헤드셋. 다른 상품 종류 단어가 있으면 그쪽이 우선")
+    void typeWordTypo() {
+        SearchFilter f = parser.parse("키보트 3만원 이하");
+        assertThat(f.category()).isEqualTo(ProductCategory.KEYBOARD);
+        assertThat(f.keyword()).isNull();
+
+        SearchFilter headphone = parser.parse("헤드폰");
+        assertThat(headphone.category()).isEqualTo(ProductCategory.AUDIO);
+        assertThat(headphone.keyword()).isEqualTo("헤드셋");
+
+        assertThat(RuleBasedQueryParser.lastSyllableTypo("마우쓰", "마우스")).isTrue();
+        assertThat(RuleBasedQueryParser.lastSyllableTypo("마우", "마우스")).isFalse();
+        assertThat(RuleBasedQueryParser.lastSyllableTypo("마으수", "마우스")).as("가운데 오타는 오타 교정기 몫").isFalse();
+    }
+
+    @Test
+    @DisplayName("한 글자 기능어(때, 쓸, 안)는 키워드에서 뺀다: 상품 설명의 '편하게 쓸 수 있습니다'와 맞지 않게")
+    void singleSyllableFunctionWords() {
+        assertThat(parser.parse("게임할 때 쓸 가벼운 마우스").keyword()).isEqualTo("게임할 가벼운");
+        assertThat(parser.parse("눈 안 아픈 모니터").keyword()).isEqualTo("눈 아픈");
+    }
+
+    @Test
+    @DisplayName("'아무거나 추천해줘'는 조건이 없는 검색")
+    void anything() {
+        SearchFilter f = parser.parse("아무거나 추천해줘");
+        assertThat(f.keyword()).isNull();
+        assertThat(f.category()).isNull();
+    }
 }
