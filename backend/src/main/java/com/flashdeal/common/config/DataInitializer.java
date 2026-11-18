@@ -1,5 +1,8 @@
 package com.flashdeal.common.config;
 
+import com.flashdeal.activity.ActivityEventType;
+import com.flashdeal.activity.ActivityRecorder;
+import com.flashdeal.ai.AiSearchService;
 import com.flashdeal.ai.ProductTagger;
 import com.flashdeal.auth.User;
 import com.flashdeal.auth.UserRepository;
@@ -43,6 +46,8 @@ public class DataInitializer implements ApplicationRunner {
     private final ProductRepository productRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
+    private final AiSearchService aiSearchService;
+    private final ActivityRecorder activityRecorder;
 
     /** 환경변수 ADMIN_PASSWORD (application.yml에서 연결). 로컬 기본값은 admin, 운영은 ProductionGuard가 강제한다 */
     @org.springframework.beans.factory.annotation.Value("${flashdeal.seed.admin-password:admin}")
@@ -68,7 +73,61 @@ public class DataInitializer implements ApplicationRunner {
         attachImages(products);
         attachTags(products);
         productRepository.saveAll(products);
-        log.info("event=SEED_DONE users={} products={}", demoUsers ? 3 : 1, products.size());
+        int searches = demoUsers ? demoSearches() : 0;
+        log.info("event=SEED_DONE users={} products={} demoSearches={}", demoUsers ? 3 : 1, products.size(), searches);
+    }
+
+    /**
+     * 판매자 등록 추천 화면을 보여 주기 위한 검색 기록. 실제 손님의 검색이 아니므로 기록에 demo: true를 남기고 화면에도 밝힌다.
+     * 결과 상태(match)는 지어내지 않고 실제 검색 경로로 돌려서 나온 값을 남긴다.
+     * 우리 가게에 없는 상품(웹캠, 마이크)과, 있는데 손님 말로는 못 찾는 상품("물 튀어도 되는 스피커")을 섞었다
+     */
+    private static final Map<String, Integer> DEMO_SEARCHES = demoSearchCounts();
+
+    private static Map<String, Integer> demoSearchCounts() {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        m.put("웹캠", 6);
+        m.put("화상회의 카메라", 3);
+        m.put("노트북 웹캠", 2);
+        m.put("콘덴서 마이크", 3);
+        m.put("방송용 마이크", 2);
+        m.put("손목 받침대", 4);
+        m.put("키보드 손목 받침대", 2);
+        m.put("모니터 조명", 3);
+        m.put("모니터 라이트바", 2);
+        m.put("물 튀어도 되는 스피커", 3);
+        m.put("샤워할 때 듣는 스피커", 2);
+        m.put("배그 할 때 쓰는 헤드셋", 3);
+        m.put("배그 헤드셋", 2);
+        m.put("밤에 써도 가족 안 깨는 키보드", 2);
+        m.put("주변 소리 막아주는 이어폰", 2);
+        m.put("무선 마우스", 5);
+        m.put("게이밍 키보드", 4);
+        m.put("27인치 모니터", 3);
+        return m;
+    }
+
+    private int demoSearches() {
+        LocalDateTime now = LocalDateTime.now();
+        int i = 0;
+        for (var e : DEMO_SEARCHES.entrySet()) {
+            var r = aiSearchService.search(e.getKey());
+            for (int n = 0; n < e.getValue(); n++, i++) {
+                Map<String, Object> detail = new LinkedHashMap<>();
+                detail.put("q", r.query());
+                detail.put("results", r.products().size());
+                detail.put("match", r.match());
+                detail.put("demo", true);
+                try {
+                    activityRecorder.record(new ActivityRecorder.Entry(null, ActivityEventType.SEARCH, "GET",
+                            "/api/products/search", 200, 0, "seed-demo", objectMapper.writeValueAsString(detail),
+                            now.minusDays(i % 14).minusHours(i % 9)));
+                } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                    throw new IllegalStateException(ex);
+                }
+            }
+        }
+        return i;
     }
 
     private List<Product> products() {

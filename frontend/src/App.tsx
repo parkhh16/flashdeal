@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar'
 import { AppProvider, useApp } from './context/AppContext'
 import { AdminActivityPage } from './pages/admin/AdminActivityPage'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
+import { AdminDemandPage } from './pages/admin/AdminDemandPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage'
 import { AdminProductsPage } from './pages/admin/AdminProductsPage'
@@ -59,6 +60,7 @@ function Layout() {
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="products" element={<AdminProductsPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="demand" element={<AdminDemandPage />} />
             </Route>
             <Route path="*" element={<div className="empty"><p>페이지를 찾을 수 없습니다.</p><Link to="/" className="ghost-link">홈으로</Link></div>} />
           </Routes>

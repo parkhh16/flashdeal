@@ -143,6 +143,18 @@ export interface ProductForm {
   description: string; detail: string; perUserLimit: number | null
 }
 export interface AdminOrder extends Order { userId: number; userName: string | null; paymentStatus: string | null }
+
+/** 판매자 등록 추천. failed는 코드가 센 못 찾은 검색어, report는 AI가 묶고 코드가 확인한 결과 */
+export interface FailedQuery { query: string; searches: number; lastMatch: SearchMatch }
+/** NEW: 우리 가게에 없는 상품 → 등록 추천 / EXISTING: 있는데 손님 말로는 못 찾음 → 상품 설명·태그 보완 */
+export interface DemandNeed {
+  need: string; category: string; keywords: string[]; queries: string[]; searches: number
+  status: 'NEW' | 'EXISTING'; products: string[]
+}
+export interface DemandReport { createdAt: string; days: number; failedSearches: number; needs: DemandNeed[] }
+export interface DemandView {
+  aiEnabled: boolean; days: number; demoSearches: number; failed: FailedQuery[]; report: DemandReport | null
+}
 export const adminApi = {
   activity: (f: ActivityFilter, page = 0, size = 30) =>
     request<Page<ActivityLog>>('GET', `/api/admin/activity${qs({ ...f, page, size })}`),
@@ -163,6 +175,9 @@ export const adminApi = {
   cancelOrder: (id: number) => request<{ status: OrderStatus }>('POST', `/api/admin/orders/${id}/cancel`),
   /** PAID 주문의 금액과 승인된 결제 합계가 어긋나는 건 */
   consistency: () => request<Mismatch[]>('GET', '/api/admin/consistency-report'),
+  demand: (days = 30) => request<DemandView>('GET', `/api/admin/demand${qs({ days })}`),
+  /** Gemini 응답을 기다리므로 수 초 걸린다 */
+  generateDemand: (days = 30) => request<DemandReport>('POST', `/api/admin/demand/report${qs({ days })}`),
 }
 
 export const myActivity = (userId: number) => request<MyActivity>('GET', `/api/users/${userId}/activity`)

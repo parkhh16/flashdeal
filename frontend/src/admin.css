@@ -177,3 +177,7 @@ a.chip:hover { border-color: var(--accent); }
 
 /* 상품 목록의 AI 태그 한 줄 */
 .tag-line { font-size: 12px; margin-top: 2px; max-width: 420px; }
+
+/* 등록 추천: 없는 상품 / 있는데 못 찾음 */
+.s-demand-new { background: var(--accent-weak); color: var(--accent); }
+.s-demand-existing { background: var(--info-weak); color: var(--info); }

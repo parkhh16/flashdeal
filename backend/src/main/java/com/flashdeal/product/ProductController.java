@@ -54,7 +54,7 @@ public class ProductController {
         AiSearchResponse result = aiSearchService.search(q, correct);
         ActivityContext.put("q", result.query());
         ActivityContext.put("results", result.products().size());
-        ActivityContext.put("match", result.match()); // 결과가 어느 단계에서 나왔는지 (모두 맞음, 일부, 완화, 없음)
+        ActivityContext.put("match", result.match()); // 못 찾은 검색(NONE·SOME_WORDS·RELAXED)을 모아 판매자에게 등록 추천
         ActivityContext.put("correctedFrom", result.originalQuery());
         return result;
     }

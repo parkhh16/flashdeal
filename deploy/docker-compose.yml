@@ -19,7 +19,7 @@ x-app: &app
     JWT_SECRET: ${JWT_SECRET:?.env에 JWT_SECRET을 설정하세요 (openssl rand -base64 32)}
     ADMIN_PASSWORD: ${ADMIN_PASSWORD:?.env에 ADMIN_PASSWORD를 설정하세요 (12자 이상)}
     SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
-    GEMINI_API_KEY: ${GEMINI_API_KEY:-}   # 없으면 AI 검색은 규칙 기반 파서로 동작
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}   # 없으면 AI 태그·등록 추천 정리만 건너뜀 (검색은 그대로)
     # 서버가 여러 대: 사용자 캐시 무효화를 다른 서버에 전파하고, 요청 한도를 Redis 한 곳에서 센다
     FLASHDEAL_REDIS_ENABLED: "true"
     REDIS_HOST: redis

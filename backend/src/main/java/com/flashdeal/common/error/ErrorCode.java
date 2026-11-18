@@ -46,6 +46,9 @@ public enum ErrorCode {
     PAYMENT_DECLINED(HttpStatus.PAYMENT_REQUIRED, "PM001", "결제가 거절되었습니다."),
     PAYMENT_CANCEL_FAILED(HttpStatus.BAD_GATEWAY, "PM002", "PG 결제 취소에 실패했습니다. 잠시 후 다시 시도해주세요."),
 
+    // ai
+    AI_DISABLED(HttpStatus.CONFLICT, "AI001", "AI 기능이 꺼져 있습니다. 서버에 GEMINI_API_KEY를 설정해주세요."),
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI002", "AI가 응답하지 않았습니다. 잠시 후 다시 시도해주세요."),
     // idempotency
     IDEMPOTENCY_KEY_MISSING(HttpStatus.BAD_REQUEST, "I001", "Idempotency-Key 헤더가 필요합니다."),
     IDEMPOTENCY_KEY_REUSED(HttpStatus.UNPROCESSABLE_ENTITY, "I002", "같은 Idempotency-Key로 다른 요청을 보낼 수 없습니다."),
