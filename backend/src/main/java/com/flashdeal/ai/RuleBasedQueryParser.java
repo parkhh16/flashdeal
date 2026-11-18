@@ -15,8 +15,27 @@ import java.util.regex.Pattern;
 @Component
 public class RuleBasedQueryParser {
 
-    private static final Pattern RANGE = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(만|천)?\\s*원?\\s*[~\\-]\\s*(\\d+(?:\\.\\d+)?)\\s*(만|천)\\s*원?");
+    /** "10~20만원", "4만원에서 6만원 사이", "3만원부터 5만원까지" */
+    private static final Pattern RANGE = Pattern.compile(
+            "(\\d+(?:\\.\\d+)?)\\s*(만|천)?\\s*원?\\s*(?:[~\\-]|에서|부터)\\s*(\\d+(?:\\.\\d+)?)\\s*(만|천)?\\s*원?\\s*(?:사이|까지|이내)?");
     private static final Pattern PRICE = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(만|천)?\\s*원?\\s*(이하|까지|미만|아래|이상|부터|넘는|초과)");
+    /** 숫자 사이 쉼표: "35,000원" → "35000원" */
+    private static final Pattern THOUSANDS_COMMA = Pattern.compile("(?<=\\d),(?=\\d{3})");
+    /**
+     * 한글로 쓴 금액: "오만원", "삼만오천원". 단어 중간("사이오만원"), 숫자 뒤("5만원"),
+     * 원이 안 붙은 경우("오디오")는 건드리지 않는다
+     */
+    private static final Pattern KOREAN_AMOUNT = Pattern.compile("(?<![가-힣0-9.])([일이삼사오육칠팔구십백천만]+)(?=\\s*원)");
+    private static final String KOREAN_DIGITS = "_일이삼사오육칠팔구";
+    /**
+     * 검색어에서 빼는 군더더기 단어. 단어 전체가 일치할 때만 뺀다.
+     * 글자 단위로 지우면 "조용히"의 '용', "비싼"의 '싼'까지 사라진다.
+     */
+    private static final Pattern FILLER = Pattern.compile(
+            "(추천|찾아|보여|알려)?해?(줘|주세요|줄래)?|좀|가장|제일|(싼|저렴한|괜찮은)(거|것)?|제품|상품|용|짜리|의|거|것"
+                    + "|을|를|은|는|이|가|로|으로|에|도");
+    /** "게임용" → "게임". 떼고 두 글자 이상 남을 때만 뗀다 ("사용", "전용"은 그대로) */
+    private static final Pattern SUFFIX = Pattern.compile("(용|짜리|의)$");
     private static final Map<String, ProductCategory> CATEGORY_WORDS = new LinkedHashMap<>();
     /** 대분류(오디오, 액세서리) 안의 일부만 가리키는 단어 */
     private static final java.util.Set<String> NARROW_WORDS = java.util.Set.of("헤드셋", "이어폰", "스피커", "거치대", "패드", "케이블");
@@ -34,14 +53,14 @@ public class RuleBasedQueryParser {
     }
 
     public SearchFilter parse(String query) {
-        String rest = query;
+        String rest = normalizeAmounts(query);
         Long min = null, max = null;
 
-        Matcher range = RANGE.matcher(rest);
-        if (range.find()) {
-            String unit = range.group(2) != null ? range.group(2) : range.group(4);
-            min = toWon(range.group(1), unit);
-            max = toWon(range.group(3), range.group(4));
+        Matcher range = findPriceRange(rest);
+        if (range != null) {
+            // 한쪽에만 단위가 있으면 다른 쪽도 같은 단위로 본다 ("10~20만원", "4만~6")
+            min = toWon(range.group(1), range.group(2) != null ? range.group(2) : range.group(4));
+            max = toWon(range.group(3), range.group(4) != null ? range.group(4) : range.group(2));
             rest = rest.replace(range.group(), " ");
         } else {
             Matcher price = PRICE.matcher(rest);
@@ -77,9 +96,53 @@ public class RuleBasedQueryParser {
             }
         }
 
-        String keyword = rest.replaceAll("(추천|찾아줘|보여줘|해줘|좀|싼|저렴한|괜찮은|제품|상품|용|짜리|의)", " ")
-                .replaceAll("\\s+", " ").strip();
-        return new SearchFilter(keyword, category, min, max).sanitized();
+        return new SearchFilter(cleanKeyword(rest), category, min, max).sanitized();
+    }
+
+    private static String cleanKeyword(String rest) {
+        StringBuilder keyword = new StringBuilder();
+        for (String token : rest.trim().split("\\s+")) {
+            if (token.isEmpty() || FILLER.matcher(token).matches()) continue;
+            Matcher suffix = SUFFIX.matcher(token);
+            if (suffix.find() && suffix.start() >= 2) token = token.substring(0, suffix.start());
+            keyword.append(' ').append(token);
+        }
+        return keyword.toString().strip();
+    }
+
+    /** 단위(만·천·원)가 하나도 없는 "502-3" 같은 모델명은 가격 범위로 보지 않는다 */
+    private static Matcher findPriceRange(String text) {
+        Matcher m = RANGE.matcher(text);
+        while (m.find()) {
+            if (m.group(2) != null || m.group(4) != null || m.group().contains("원")) return m;
+        }
+        return null;
+    }
+
+    private static String normalizeAmounts(String query) {
+        String text = THOUSANDS_COMMA.matcher(query).replaceAll("");
+        return KOREAN_AMOUNT.matcher(text).replaceAll(m -> String.valueOf(koreanToNumber(m.group(1))));
+    }
+
+    /** "오만" → 50000, "삼만오천" → 35000, "십오만" → 150000, "만" → 10000 */
+    static long koreanToNumber(String s) {
+        long total = 0, section = 0, digit = 0;
+        for (char c : s.toCharArray()) {
+            int d = KOREAN_DIGITS.indexOf(c);
+            if (d > 0) {
+                digit = d;
+            } else if (c == '만') {
+                section += digit;
+                total += (section == 0 ? 1 : section) * 10_000;
+                section = 0;
+                digit = 0;
+            } else {
+                int unit = c == '십' ? 10 : c == '백' ? 100 : 1_000;
+                section += (digit == 0 ? 1 : digit) * unit;
+                digit = 0;
+            }
+        }
+        return total + section + digit;
     }
 
     private static long toWon(String number, String unit) {
