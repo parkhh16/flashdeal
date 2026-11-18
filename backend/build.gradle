@@ -50,7 +50,9 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'search-eval' // 검색 품질 평가는 searchEval 태스크로만 실행한다 (합격/불합격이 아니라 수치를 재는 것)
+    }
     testLogging {
         events 'passed', 'failed', 'skipped'
         showStandardStreams = true
@@ -70,4 +72,22 @@ tasks.named('test') {
         systemProperty 'spring.datasource.hikari.idle-timeout', '10000'
         systemProperty 'spring.jpa.properties.hibernate.jdbc.time_zone', 'Asia/Seoul'
     }
+}
+
+// ./gradlew searchEval -Plabel=이름 : 검색 품질 평가 (시드 상품 25개, 정답을 붙인 질의 72개).
+// 리포트는 build/reports/search-eval/<label>.md
+tasks.register('searchEval', Test) {
+    description = '검색 품질 평가'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'search-eval'
+    }
+    outputs.upToDateWhen { false }
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+    systemProperty 'search.eval.label', project.findProperty('label') ?: 'latest'
 }
