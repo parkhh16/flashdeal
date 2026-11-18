@@ -92,6 +92,13 @@ public class Product extends BaseTimeEntity {
     @Column(length = 2000)
     private List<String> images = new ArrayList<>();
 
+    /**
+     * 검색용 문자열: 이름, 짧은 설명, 상세 설명, 스펙을 정규화해서 합친 것 ({@link SearchText}).
+     * 검색할 때마다 네 컬럼을 이어 붙여 가공하지 않도록 내용이 바뀔 때 미리 만들어 둔다.
+     */
+    @Column(name = "search_text", length = SearchText.MAX_LENGTH)
+    private String searchText;
+
     public Product(String name, ProductCategory category, long price, int stock, String description) {
         this(name, SubCategory.defaultOf(category), price, null, stock, description, null, null, null, null);
     }
@@ -111,6 +118,7 @@ public class Product extends BaseTimeEntity {
         this.specs = specs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(specs);
         this.images = images == null ? new ArrayList<>() : new ArrayList<>(images);
         this.perUserLimit = perUserLimit;
+        refreshSearchText();
     }
 
     /** 엔티티 변경 감지로 차감한다 (NAIVE, PESSIMISTIC 전략에서 사용) */
@@ -154,6 +162,11 @@ public class Product extends BaseTimeEntity {
         this.description = description;
         this.detail = detail;
         this.perUserLimit = perUserLimit;
+        refreshSearchText();
+    }
+
+    private void refreshSearchText() {
+        this.searchText = SearchText.build(name, description, detail, specs);
     }
 
     public void changeActive(boolean active) {
