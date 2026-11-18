@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 94개, H2 (약 3분)
+./gradlew test                                          # 전체 118개, H2 (약 3분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -67,7 +67,9 @@ DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트�
 ./gradlew test --tests "*AuthFlowTest"                  # 가입, 로그인 잠금, 탈퇴, 정지, 강제 로그아웃, 동시 가입
 ./gradlew test --tests "*AiSearchServiceTest"           # LLM 캐시, 폴백, 스탬피드 방지
 ./gradlew test --tests "*GeminiQueryParserTest"         # Gemini 요청 모양, 응답·오류 처리 (가짜 서버)
+./gradlew test --tests "*WordSearchTest"                # 단어 검색: 상세·스펙까지, 띄어쓰기·조사, 일부 일치, 제외
 ./gradlew test --tests "*OrderQueryPerformanceTest"     # N+1 쿼리 수, 실행 계획
+./gradlew searchEval -Plabel=이름                        # 검색 품질 평가 (질의 72개, 리포트 build/reports/search-eval/)
 
 cd ../frontend && npm run build                         # 타입 체크 + 빌드
 ```

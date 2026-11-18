@@ -63,6 +63,45 @@ API 키가 없으면 모든 검색이 규칙 기반 파서로 처리됩니다. �
 
 응답 시간은 0.8~2.5초였고, 같은 검색어는 캐시에서 15ms 안에 나옵니다. 실제 응답에는 결과(`model_output`) 앞에 `thought` 단계가 오는데, 가짜 서버 테스트도 같은 모양으로 맞췄습니다.
 
+## AI보다 먼저: 검색 기본기
+
+### 문제
+
+LLM 결과를 보기 전에, 검색 자체가 상품의 이름과 짧은 설명에서 검색어를 **한 덩어리로** 찾고 있었습니다. 상세 설명에 "도서관처럼 조용한"이라고 적혀 있어도 "조용한 키보드"로는 찾지 못했고, "데스크매트"와 "데스크 매트"는 다른 말이었습니다. "마우스 패드"는 앞 단어를 보고 마우스로 분류했습니다. 결과가 0건이면 카테고리 전체를 보여 주는 완화 기능이 이런 문제를 가리고 있었습니다.
+
+### 기준: 표기 차이는 규칙으로, 뜻 차이는 AI로
+
+| 규칙으로 처리 (표기 차이) | AI의 몫 (뜻 차이) |
+|---|---|
+| 띄어쓰기 "데스크매트", 붙여 쓰기 "마우스패드", 조사·어미 "사무실에서", "조용히" | "몰컴" → 저소음 |
+| 영어·줄임말 "wireless", "블투", "4K monitor" | "가벼운" → 초경량 |
+| 가격 "5만원대", "20만원 이상 30만원 이하", "십만원 안쪽", "under 30000" | "fps" → 240Hz |
+| 제외 "게이밍 말고", 상품 종류 끝 글자 오타 "키보트" | "물 튀어도" → 방수 |
+
+### 바꾼 것
+
+| 무엇 | 어떻게 |
+|---|---|
+| 찾는 범위 | 이름·짧은 설명·**상세 설명·스펙**을 정규화해 합친 `search_text` 컬럼 (저장·수정할 때 만들고, 기존 상품은 마이그레이션 V7이 채움) |
+| 단어 매칭 ([`SearchText`](../../backend/src/main/java/com/flashdeal/product/SearchText.java)) | 단어별로 찾고, 띄어쓰기를 무시하고 포함("패드" ↔ "장패드"). 한글 세 글자 이상은 앞 두 글자로 시작하는 단어("가벼운" ↔ "가벼움"). 한 글자("눈")는 같은 단어만 |
+| 검색 순서 | 단어가 모두 맞는 상품 → 오타 교정 → **가장 많은 단어가 맞는 상품** → 카테고리·가격만으로 완화. 응답의 `match`로 어느 단계 결과인지 화면에 알림 |
+| 상품 종류 | 여러 개면 맨 뒤가 중심("마우스 패드"는 패드). 좁은 종류("이어폰")는 결과에 꼭 있어야 하는 단어 |
+| 군더더기 | "때", "쓸", "안" 같은 한 글자 기능어는 키워드에서 뺌. 상품 설명의 "편하게 쓸 수 있습니다"와 맞아 엉뚱한 상품을 고르던 문제 |
+
+### 결과
+
+질의 72개에 시드 상품 기준 정답을 붙여 두고([`cases.json`](../../backend/src/test/resources/search-eval/cases.json)), 검색창과 같은 경로를 AI 없이 돌렸습니다 (`./gradlew searchEval`). ◎는 결과가 모두 정답, △는 정답이 하나라도 포함입니다.
+
+| 묶음 | 질의 | 전 ◎ / △ | 후 ◎ / △ |
+|---|---|---|---|
+| 기본 (2026-10 파서 평가셋의 질의) | 52 | 27 / 41 | **50 / 52** |
+| 처음 보는 표현 (상황·느낌) | 20 | 1 / 16 | **13 / 20** |
+| 전체 | 72 | 28 / 57 | **63 / 72** |
+
+남은 △ 9개는 모두 뜻 차이입니다. "가벼운 마우스"(초경량), "fps 할 때 쓸 모니터"(240Hz), "밤에 써도 가족 안 깨는 키보드"(저소음), "물 튀어도 되는 스피커"(방수) 같은 것들이라, 상품 등록 때 AI가 만드는 태그의 몫으로 남겼습니다.
+
+**이 숫자의 한계**: 정답은 고치기 전에 정했지만, 규칙은 이 질의들의 실패를 보면서 다듬었습니다 (첫 측정 뒤 한 글자 기능어, 끝 글자 오타, "매트"를 추가). 그래서 이 72개는 엄밀한 의미의 처음 보는 질의가 아닙니다. 규칙을 만든 사람이 보지 않은 질의로 다시 재는 것이 다음 단계입니다.
+
 ## 검증 범위
 
 제어 흐름(LLM 결과 → 캐시 → 장애 시 폴백, 스탬피드 방지)은 LLM 호출부를 스텁으로 바꾼 테스트로 검증했습니다. Gemini 요청 모양(키 헤더, 스키마, `store: false`)과 응답·오류 처리(깨진 JSON, 빈 출력, 500, 429, 시간 초과)는 가짜 서버(`MockRestServiceServer`) 테스트로 검증했습니다.
@@ -71,7 +110,10 @@ API 키가 없으면 모든 검색이 규칙 기반 파서로 처리됩니다. �
 
 - [`AiSearchService`](../../backend/src/main/java/com/flashdeal/ai/AiSearchService.java): 캐시, 폴백, 오타 교정 흐름
 - [`QueryParser`](../../backend/src/main/java/com/flashdeal/ai/QueryParser.java), [`GeminiQueryParser`](../../backend/src/main/java/com/flashdeal/ai/GeminiQueryParser.java): LLM 호출, 응답 스키마
-- [`RuleBasedQueryParser`](../../backend/src/main/java/com/flashdeal/ai/RuleBasedQueryParser.java): 규칙 기반 폴백
+- [`RuleBasedQueryParser`](../../backend/src/main/java/com/flashdeal/ai/RuleBasedQueryParser.java): 규칙 기반 파서 (가격, 상품 종류, 제외, 붙여 쓰기)
+- [`SearchText`](../../backend/src/main/java/com/flashdeal/product/SearchText.java), [`ProductQueryService`](../../backend/src/main/java/com/flashdeal/product/ProductQueryService.java): 검색용 문자열, 단어 매칭, 모두 맞음 / 가장 많이 맞음
+- [`V7__product_search_text`](../../backend/src/main/java/db/migration/V7__product_search_text.java): 검색용 컬럼 추가와 기존 상품 채우기
 - [`SearchFilter`](../../backend/src/main/java/com/flashdeal/ai/SearchFilter.java): `sanitized()`
 - [`TypoCorrector`](../../backend/src/main/java/com/flashdeal/ai/TypoCorrector.java): 자모 편집 거리
-- 테스트: `AiSearchServiceTest`, `GeminiQueryParserTest`, `RuleBasedQueryParserTest`, `TypoSearchTest`
+- 테스트: `AiSearchServiceTest`, `GeminiQueryParserTest`, `RuleBasedQueryParserTest`, `SearchTextTest`, `WordSearchTest`, `TypoSearchTest`
+- 평가: `SearchQualityEvaluation` (`./gradlew searchEval -Plabel=이름`, 리포트는 `build/reports/search-eval/`)
