@@ -148,6 +148,11 @@ export function AdminProductsPage() {
                 <td>
                   <div className="cell-title">{p.active ? <Link to={`/products/${p.id}`}>{p.name}</Link> : p.name}</div>
                   <div className="muted">#{p.id} · {p.categoryLabel} › {p.subCategoryLabel}{p.perUserLimit ? ` · 1인 ${p.perUserLimit}개` : ''}</div>
+                  <div className="muted tag-line" title="AI가 상품 정보를 보고 붙인 검색어. 손님이 이 말로 검색해도 이 상품이 나온다">
+                    {p.taggedAt === null
+                      ? (p.active ? 'AI 태그 대기 중 (API 키가 있으면 1분 안팎에 붙음)' : 'AI 태그 없음 (판매 중지)')
+                      : p.searchTags.length > 0 ? `AI 태그: ${p.searchTags.join(', ')}` : 'AI 태그 없음'}
+                  </div>
                 </td>
                 <td className="nowrap">
                   {won(p.price)}

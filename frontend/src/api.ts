@@ -133,7 +133,10 @@ export interface UserOption {
 }
 export interface MyActivity { recentSearches: string[]; recentlyViewed: Product[] }
 /** stock = 지금 팔 수 있는 가용 재고, held = 결제 대기·결제 확인 중 주문이 쥐고 있는 수량 */
-export interface AdminProduct extends Product { active: boolean; detail: string | null; held: number }
+/** searchTags = AI가 붙인 검색 태그, taggedAt = null이면 백그라운드 작업이 곧 (다시) 만든다 */
+export interface AdminProduct extends Product {
+  active: boolean; detail: string | null; held: number; searchTags: string[]; taggedAt: string | null
+}
 export interface StockAdjustResult { productId: number; delta: number; stock: number; held: number }
 export interface ProductForm {
   name: string; subCategory: string; price: number; originalPrice: number | null; stock: number | null

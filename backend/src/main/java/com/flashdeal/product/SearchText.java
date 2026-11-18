@@ -57,7 +57,16 @@ public final class SearchText {
     }
 
     public static String build(String name, String description, String detail, Map<String, String> specs) {
-        Stream<String> parts = Stream.of(name, description, detail);
+        return build(name, description, detail, specs, List.of());
+    }
+
+    /**
+     * @param tags AI가 붙인 검색 태그. 상세 설명이 길어 {@link #MAX_LENGTH}에서 잘려도 남도록 이름 바로 뒤에 둔다
+     */
+    public static String build(String name, String description, String detail, Map<String, String> specs,
+                               List<String> tags) {
+        Stream<String> parts = Stream.concat(Stream.concat(Stream.of(name), tags == null ? Stream.empty() : tags.stream()),
+                Stream.of(description, detail));
         if (specs != null) {
             parts = Stream.concat(parts, specs.entrySet().stream().flatMap(e -> Stream.of(e.getKey(), e.getValue())));
         }

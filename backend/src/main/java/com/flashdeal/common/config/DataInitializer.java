@@ -1,5 +1,6 @@
 package com.flashdeal.common.config;
 
+import com.flashdeal.ai.ProductTagger;
 import com.flashdeal.auth.User;
 import com.flashdeal.auth.UserRepository;
 import com.flashdeal.product.Product;
@@ -20,6 +21,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,6 +66,7 @@ public class DataInitializer implements ApplicationRunner {
 
         List<Product> products = products();
         attachImages(products);
+        attachTags(products);
         productRepository.saveAll(products);
         log.info("event=SEED_DONE users={} products={}", demoUsers ? 3 : 1, products.size());
     }
@@ -183,8 +186,8 @@ public class DataInitializer implements ApplicationRunner {
         return list;
     }
 
-    /** 시드 순서와 1:1 대응하는 이미지 슬러그. 경로는 scripts/fetch-product-images.mjs가 만든 manifest에서 읽는다 */
-    private static final List<String> IMAGE_SLUGS = List.of(
+    /** 시드 순서와 1:1 대응하는 슬러그. 이미지 경로(scripts/fetch-product-images.mjs가 만든 manifest)와 AI 태그를 이 이름으로 찾는다 */
+    private static final List<String> SLUGS = List.of(
             "kb-limited", "kb-silent-wireless", "kb-gaming-tkl", "kb-aluminum", "kb-slim-bt",
             "ms-vertical", "ms-light-gaming", "ms-silent", "ms-8k", "ms-trackball",
             "mn-27-qhd", "mn-24-office", "mn-32-4k", "mn-24-240",
@@ -192,19 +195,34 @@ public class DataInitializer implements ApplicationRunner {
             "ac-deskmat", "ac-monitor-arm", "ac-laptop-stand", "ac-keycaps", "ac-usb-hub");
 
     private void attachImages(List<Product> products) {
-        Map<String, List<String>> manifest = readManifest();
-        for (int i = 0; i < products.size() && i < IMAGE_SLUGS.size(); i++) {
-            products.get(i).replaceImages(manifest.getOrDefault(IMAGE_SLUGS.get(i), List.of()));
+        Map<String, List<String>> manifest = readSeed("seed/product-images.json");
+        for (int i = 0; i < products.size() && i < SLUGS.size(); i++) {
+            products.get(i).replaceImages(manifest.getOrDefault(SLUGS.get(i), List.of()));
         }
     }
 
-    /** manifest가 없어도 앱은 떠야 한다. 이미지가 없으면 프론트가 카테고리 플레이스홀더를 보여준다 */
-    private Map<String, List<String>> readManifest() {
-        try (InputStream in = new ClassPathResource("seed/product-images.json").getInputStream()) {
+    /**
+     * 시드 상품의 AI 태그. Gemini(gemini-3.5-flash-lite, 2026-11-19)가 시드 상품마다 제안한 말을 그대로 파일에 저장해 두고,
+     * 불러올 때 운영과 같은 코드 검사({@link ProductTagger#check})를 거친다. 그래서 키 없이도 테스트와 검색 품질 평가가 같은 결과를 내고,
+     * 검사 규칙을 바꾸면 시드에도 바로 반영된다. 파일에 없는 상품은 태그 없이 시작하고, 키가 있으면 ProductTagJob이 채운다
+     */
+    private void attachTags(List<Product> products) {
+        Map<String, List<String>> suggested = readSeed("seed/product-tags.json");
+        LocalDateTime now = LocalDateTime.now();
+        for (int i = 0; i < products.size() && i < SLUGS.size(); i++) {
+            List<String> raw = suggested.get(SLUGS.get(i));
+            Product p = products.get(i);
+            if (raw != null) p.applyTags(ProductTagger.check(p.contentText(), raw), now);
+        }
+    }
+
+    /** 시드 파일이 없어도 앱은 떠야 한다. 이미지가 없으면 프론트가 카테고리 플레이스홀더를 보여주고, 태그가 없으면 ProductTagJob이 채운다 */
+    private Map<String, List<String>> readSeed(String path) {
+        try (InputStream in = new ClassPathResource(path).getInputStream()) {
             return objectMapper.readValue(in, new TypeReference<>() {
             });
         } catch (IOException e) {
-            log.warn("event=SEED_IMAGES_MISSING cause={}", e.getMessage());
+            log.warn("event=SEED_FILE_MISSING path={} cause={}", path, e.getMessage());
             return Map.of();
         }
     }

@@ -94,6 +94,11 @@ public class RuleBasedQueryParser {
         return REQUIRED_WORDS.contains(word);
     }
 
+    /** 상품 종류를 나타내는 모든 말 (영어 포함). AI 태그에 다른 종류 이름이 섞였는지 검사할 때 쓴다 */
+    public static Set<String> typeWords() {
+        return TYPE_WORDS.keySet();
+    }
+
     public SearchFilter parse(String query) {
         String rest = splitCompounds(normalizeAmounts(query));
         Long min = null, max = null;

@@ -174,3 +174,6 @@ a.chip:hover { border-color: var(--accent); }
 .u-locked { background: var(--warn-weak); color: var(--warn); }
 .row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .ghost-link.small { margin: 0; padding: 4px 10px; font-size: 13px; }
+
+/* 상품 목록의 AI 태그 한 줄 */
+.tag-line { font-size: 12px; margin-top: 2px; max-width: 420px; }

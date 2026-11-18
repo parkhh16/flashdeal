@@ -51,8 +51,13 @@ public class AdminCatalogService {
                               @Positive Integer perUserLimit) {
     }
 
-    /** @param held 결제 대기·결제 확인 중 주문이 쥐고 있는 수량 (가용 재고 stock과 별개로 보여줘야 재고 조정 실수를 막는다) */
-    public record AdminProduct(@JsonUnwrapped ProductResponse summary, boolean active, String detail, long held) {
+    /**
+     * @param held       결제 대기·결제 확인 중 주문이 쥐고 있는 수량 (가용 재고 stock과 별개로 보여줘야 재고 조정 실수를 막는다)
+     * @param searchTags AI가 붙인 검색 태그
+     * @param taggedAt   태그를 만든 시각. null이면 백그라운드 작업이 곧 (다시) 만든다
+     */
+    public record AdminProduct(@JsonUnwrapped ProductResponse summary, boolean active, String detail, long held,
+                               List<String> searchTags, java.time.LocalDateTime taggedAt) {
     }
 
     public record AdminOrder(@JsonUnwrapped OrderResponse order, Long userId, String userName,
@@ -127,6 +132,7 @@ public class AdminCatalogService {
     }
 
     private AdminProduct toAdmin(Product p, long held) {
-        return new AdminProduct(ProductResponse.from(p), p.isActive(), p.getDetail(), held);
+        return new AdminProduct(ProductResponse.from(p), p.isActive(), p.getDetail(), held,
+                p.getSearchTags(), p.getTaggedAt());
     }
 }

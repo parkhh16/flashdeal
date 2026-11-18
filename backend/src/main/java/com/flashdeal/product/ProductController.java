@@ -47,7 +47,7 @@ public class ProductController {
         return productQueryService.detail(id);
     }
 
-    @Operation(summary = "자연어 검색", description = "예: \"5만원 이하 무선 마우스\". 검색할 때 LLM은 부르지 않고, 규칙 기반 파서와 단어 매칭으로 찾는다")
+    @Operation(summary = "자연어 검색", description = "예: \"5만원 이하 무선 마우스\". 검색할 때 LLM은 부르지 않고, 상품 등록 때 AI가 붙인 태그까지 단어로 찾는다")
     @GetMapping("/api/products/search")
     public AiSearchResponse aiSearch(@RequestParam @NotBlank @Size(max = 100) String q,
                                      @RequestParam(defaultValue = "true") boolean correct) {

@@ -13,10 +13,12 @@ import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * {@code @DynamicUpdate}: 변경된 컬럼만 UPDATE 한다. 없으면 관리자가 상품명만 고쳐도 Hibernate가 모든 컬럼(stock 포함)을 덮어써서,
@@ -99,6 +101,18 @@ public class Product extends BaseTimeEntity {
     @Column(name = "search_text", length = SearchText.MAX_LENGTH)
     private String searchText;
 
+    /**
+     * AI가 상품 정보를 보고 붙인 "손님이 검색창에 칠 만한 말" ({@code ProductTagger}). 검색용 문자열에 함께 들어간다.
+     * 검색할 때 AI를 부르지 않는 대신, 뜻이 같은 다른 표현을 상품 쪽에 미리 붙여 둔다
+     */
+    @Convert(converter = JsonConverters.StringList.class)
+    @Column(name = "search_tags", length = 500)
+    private List<String> searchTags = new ArrayList<>();
+
+    /** 태그를 만든 시각. null이면 태그를 (다시) 만들어야 한다: 새 상품이거나 이름·설명이 바뀐 상품 */
+    @Column(name = "tagged_at")
+    private LocalDateTime taggedAt;
+
     public Product(String name, ProductCategory category, long price, int stock, String description) {
         this(name, SubCategory.defaultOf(category), price, null, stock, description, null, null, null, null);
     }
@@ -154,6 +168,8 @@ public class Product extends BaseTimeEntity {
         if (perUserLimit != null && perUserLimit < 1) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "1인 구매 제한은 1개 이상이어야 합니다.");
         }
+        boolean contentChanged = !Objects.equals(this.name, name) || this.subCategory != subCategory
+                || !Objects.equals(this.description, description) || !Objects.equals(this.detail, detail);
         this.name = name;
         this.subCategory = subCategory;
         this.category = subCategory.getParent();
@@ -162,11 +178,25 @@ public class Product extends BaseTimeEntity {
         this.description = description;
         this.detail = detail;
         this.perUserLimit = perUserLimit;
+        if (contentChanged) {
+            this.taggedAt = null; // 새 내용으로 태그를 다시 만든다. 그때까지는 이전 태그로 검색된다
+        }
+        refreshSearchText();
+    }
+
+    /** 태그를 만들 때 AI에게 보여 준 내용. 저장 직전에 다시 비교해서, 그사이 상품이 고쳐졌으면 저장하지 않는다 */
+    public String contentText() {
+        return SearchText.build(name, description, detail, specs);
+    }
+
+    public void applyTags(List<String> tags, LocalDateTime at) {
+        this.searchTags = new ArrayList<>(tags);
+        this.taggedAt = at;
         refreshSearchText();
     }
 
     private void refreshSearchText() {
-        this.searchText = SearchText.build(name, description, detail, specs);
+        this.searchText = SearchText.build(name, description, detail, specs, searchTags);
     }
 
     public void changeActive(boolean active) {

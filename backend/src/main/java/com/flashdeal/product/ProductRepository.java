@@ -20,6 +20,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
         long getCount();
     }
 
+    /** 태그를 (다시) 만들어야 하는 판매 중인 상품 */
+    @Query("select p from Product p where p.taggedAt is null and p.active = true order by p.id")
+    List<Product> findUntagged(org.springframework.data.domain.Pageable pageable);
+
     @Query("select new com.flashdeal.product.PurchaseRule(p.id, p.name, p.active, p.perUserLimit) " +
             "from Product p where p.id in :ids")
     List<PurchaseRule> findPurchaseRules(@Param("ids") java.util.Collection<Long> ids);
