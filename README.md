@@ -28,7 +28,7 @@
 | Cache | Caffeine | 탈퇴·정지 즉시 반영을 위한 사용자 상태 조회와 LLM 검색 결과를 요청마다 DB·외부 API 없이 처리. 서버가 여러 대여도 캐시는 서버 메모리에 두고 무효화만 전파 |
 | Redis | Pub/Sub, `INCR` 카운터 | 서버 여러 대일 때만: 사용자 캐시 무효화를 모든 서버에 전파, 요청 한도를 한 곳에서 셈. 장애 시 요청은 허용하고 캐시는 TTL로 따라옴 ([#17](docs/issues/13-scale-out.md)) |
 | Scheduler | ShedLock (JDBC) | 만료·대사 스케줄러를 한 서버에서만 실행. 락을 이미 공유하는 DB에 둬서 결제 복구가 Redis에 의존하지 않음 |
-| AI | Claude API (Anthropic Java SDK, Structured Outputs) | 응답을 JSON Schema로 강제해서 자유 텍스트 파싱 실패를 없앰. 장애 시 규칙 기반 파서로 폴백 |
+| AI | Gemini API (REST, 응답 JSON Schema 강제) | 응답 형식을 스키마로 강제해서 자유 텍스트 파싱 실패를 없앰. LLM 공급자는 `QueryParser` 인터페이스 뒤에 두고, 키가 없거나 장애 시 규칙 기반 파서로 폴백 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
 | Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions | 테스트를 H2와 MySQL 양쪽에서 실행. CI는 테스트, 빌드, 서버 환경 스모크 테스트까지 |
 | Infra | Docker Compose, Caddy | 서버 환경을 파일 하나로 재현. Caddy는 HTTPS 인증서 발급, 정적 파일, 프록시, 헬스체크 기반 라우팅을 설정 몇 줄로 처리 |
@@ -123,7 +123,7 @@ flowchart LR
     EXP[만료 스케줄러 5s<br/>한 서버만] -->|재고 복구| DB
     API -.서버 여러 대일 때<br/>캐시 무효화 전파·요청 한도.-> REDIS[(Redis)]
     API -.요청마다.-> Q[메모리 큐] -->|300ms 배치 INSERT| LOG[(activity_log)]
-    API -->|질의 → 필터| LLM[Claude API]
+    API -->|질의 → 필터| LLM[Gemini API]
     LLM -.실패 시.-> RULE[규칙 기반 파서]
 ```
 
@@ -344,7 +344,7 @@ backend/src/main/java/com/flashdeal
 ├── mockpg/        가짜 PG 서버 + 장애 설정 (테스트가 코드에서 바꿈)
 ├── idempotency/   Idempotency-Key 처리
 ├── activity/      활동 로그 필터, 비동기 배치 적재, 조회 API
-├── ai/            Claude 질의 파서, 규칙 기반 폴백, 캐시, 오타 교정
+├── ai/            LLM 질의 파서(Gemini), 규칙 기반 폴백, 캐시, 오타 교정
 ├── admin/         관리자 API(상품·주문·회원·재고·정합성), 개발 도구(플래그, 기본 꺼짐)
 └── common/        에러 코드, 전역 예외 처리, traceId 필터, 데모 데이터, 운영 설정 안전장치(ProductionGuard)
     ├── cluster/   서버 여러 대: 스케줄러 락(ShedLock), Redis 켜짐/꺼짐에 따른 무효화 전파·카운터 구성
@@ -373,4 +373,4 @@ scripts/           상품 이미지 수집
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.
 - CI(GitHub Actions)는 H2로 테스트합니다. Testcontainers로 CI에서도 MySQL 테스트를 돌리는 것이 다음 단계입니다.
-- LLM 실제 호출은 API 키 없이 폴백 경로만 테스트로 확인했습니다.
+- Gemini 실제 호출은 검색어 십여 개로 직접 확인했습니다 (결과는 [AI 검색 문서](docs/issues/11-ai-search.md)). 검색어 수십 개로 정확도를 수치로 재는 평가셋이 다음 단계입니다.
