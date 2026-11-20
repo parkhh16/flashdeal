@@ -1,12 +1,12 @@
 package com.flashdeal.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flashdeal.activity.ActivityEventType;
 import com.flashdeal.activity.ActivityRecorder;
-import com.flashdeal.ai.AiSearchService.AiSearchResponse;
 import com.flashdeal.ai.AiSearchService.Match;
 import com.flashdeal.common.cluster.ClusterLock;
 import com.flashdeal.common.error.BusinessException;
@@ -53,8 +53,8 @@ public class DemandService {
             전자기기 쇼핑몰에서 손님이 검색했지만 원하는 상품을 찾지 못한 검색어 목록이다 (JSON 배열, searches는 검색 횟수).
             같은 것을 찾는 검색어끼리 묶고, 묶음마다 손님이 찾던 상품을 정리한다.
             - need: 손님이 찾던 상품을 사람이 읽기 좋게 짧게. 손님이 원한 특징은 살린다 ("게임용 의자"를 "의자"로 줄이지 않는다)
-            - keywords: 그런 상품이라면 상품명이나 스펙에 적혀 있을 말 1~3개. 손님이 쓴 말이 아니라 판매자가 쓰는 말로
-              (예: "손 작은 사람용 마우스" → ["소형", "마우스"], "눈 안 아픈 모니터" → ["플리커프리", "모니터"])
+            - phrases: 그런 상품을 쇼핑몰에서 찾을 때 쓸 판매자 표현 1~3개. 표현 하나하나가 따로 검색하는 검색어다 (모두 들어간 상품을 찾는 게 아니다).
+              손님이 쓴 말이 아니라 상품명·스펙에 적힐 말로 (예: "손 작은 사람용 마우스" → ["소형 마우스", "미니 마우스"])
             - category: KEYBOARD, MOUSE, MONITOR, AUDIO(헤드셋·이어폰·스피커), ACCESSORY(패드·거치대·케이블·키캡·허브). 해당 없으면 OTHER
             - queries: 그 묶음에 넣은 검색어의 query 값을 그대로 (검색 횟수는 넣지 않는다)
             - 한 검색어는 한 묶음에만 넣는다. 상품을 찾는 검색어가 아니면(장난, 의미 없는 글자) 어느 묶음에도 넣지 않는다
@@ -71,31 +71,35 @@ public class DemandService {
                                     "need", Map.of("type", "string"),
                                     "category", Map.of("type", "string", "enum",
                                             List.of("KEYBOARD", "MOUSE", "MONITOR", "AUDIO", "ACCESSORY", "OTHER")),
-                                    "keywords", Map.of("type", "array", "items", Map.of("type", "string")),
+                                    "phrases", Map.of("type", "array", "items", Map.of("type", "string")),
                                     "queries", Map.of("type", "array", "items", Map.of("type", "string"))),
-                            "required", List.of("need", "category", "keywords", "queries")))),
+                            "required", List.of("need", "category", "phrases", "queries")))),
             "required", List.of("groups"));
 
     record Groups(List<Group> groups) {
     }
 
-    record Group(String need, String category, List<String> keywords, List<String> queries) {
+    record Group(String need, String category, List<String> phrases, List<String> queries) {
     }
 
     /** @param lastMatch 가장 최근 검색의 결과 상태 */
     public record FailedQuery(String query, long searches, Match lastMatch) {
     }
 
-    /** NEW: 우리 가게에 없는 상품 → 등록 추천. EXISTING: 있는 상품인데 손님이 쓴 말로는 못 찾음 → 상품 설명·태그 보완 */
+    /**
+     * NEW: 판매자 표현으로 검색해도 단어가 모두 맞는 상품이 없음 → 등록 검토 (비슷한 상품 후보를 같이 보여 준다).
+     * EXISTING: 있는 상품인데 손님이 쓴 말로는 못 찾음 → 상품 설명·태그 보완
+     */
     public enum Status {NEW, EXISTING}
 
     /**
-     * @param keywords 그런 상품의 상품명·스펙에 있을 말 (AI). 이 말로 우리 상품을 다시 검색해 본다
+     * @param phrases  판매자 표현 (AI). 표현마다 따로 우리 상품을 검색해 본다
      * @param searches 묶인 검색어들의 검색 횟수 합 (코드가 센 값)
-     * @param products EXISTING일 때 keywords로 다시 검색해서 나온 우리 상품
+     * @param products EXISTING일 때 판매자 표현으로 찾은 우리 상품
+     * @param similar  NEW일 때 단어가 일부라도 맞는 같은 종류 상품 (없다고 단정하지 않고 판매자가 판단하게)
      */
-    public record Need(String need, String category, List<String> keywords, List<String> queries, long searches,
-                       Status status, List<String> products) {
+    public record Need(String need, String category, @JsonAlias("keywords") List<String> phrases, List<String> queries,
+                       long searches, Status status, List<String> products, List<String> similar) {
     }
 
     public record Report(LocalDateTime createdAt, int days, int failedSearches, List<Need> needs) {
@@ -201,10 +205,10 @@ public class DemandService {
             if (queries.isEmpty()) continue;
             long searches = queries.stream().mapToLong(q -> byQuery.get(q).searches()).sum();
             String need = g.need().strip();
-            List<String> keywords = g.keywords() == null ? List.of() : g.keywords().stream()
-                    .filter(k -> k != null && !k.isBlank()).map(String::strip).limit(3).toList();
+            List<String> phrases = g.phrases() == null ? List.of() : g.phrases().stream()
+                    .filter(k -> k != null && !k.isBlank()).map(String::strip).distinct().limit(3).toList();
             needs.add(new Need(need.length() > 30 ? need.substring(0, 30) : need, g.category(),
-                    keywords.isEmpty() ? List.of(need) : keywords, queries, searches, null, List.of()));
+                    phrases.isEmpty() ? List.of(need) : phrases, queries, searches, null, List.of(), List.of()));
         }
         if (!unknown.isEmpty()) {
             log.warn("event=DEMAND_AI_UNKNOWN_QUERIES queries={}", unknown); // 목록에 없는 검색어: AI가 바꿔 적었거나 지어냄
@@ -213,19 +217,42 @@ public class DemandService {
     }
 
     /**
-     * AI가 고른 "판매자가 쓰는 말"로 우리 상품을 검색해 본다. 단어가 모두 맞고 AI가 고른 종류와 같은 상품이 있으면 "있는데 못 찾음".
+     * AI가 고른 판매자 표현으로 우리 상품을 검색해 본다. 표현 하나라도 단어가 모두 맞고 AI가 고른 종류와 같은 상품이 나오면 "있는데 못 찾음".
      * <ul>
      *   <li>손님이 쓴 말(need)로 검색하지 않는 이유: "배틀그라운드용 헤드셋"은 상품 설명에 없는 말이라, 게이밍 헤드셋이 있어도 못 찾는다</li>
+     *   <li>표현을 하나씩 따로 검색하는 이유: AI는 ["저소음 키보드", "무소음 키보드"]처럼 "이 중 아무거나"로 준다.
+     *       합쳐서 검색하면 "저소음"과 "무소음"이 둘 다 있는 상품을 찾게 되어, 저소음 키보드가 있어도 없다고 판정했다</li>
      *   <li>종류까지 보는 이유: "마이크"로 검색하면 스펙에 "마이크로 스위치"가 있는 마우스도 단어가 맞는다</li>
+     *   <li>"모두 맞는 상품" 조회만 한다 (표현당 쿼리 1번, 최대 묶음 10개 × 표현 3개). 손님 검색처럼 완화 단계까지 내려가지 않는다</li>
      * </ul>
+     * 표현의 상품 종류(맨 뒤 단어)는 <b>상품 이름</b>에 있어야 "있는 상품"이다. "USB 마이크"의 단어가 헤드셋 스펙("USB", "마이크 탈착식")에
+     * 모두 있어도 헤드셋은 마이크가 아니다. 이런 상품은 후보로 내려서 판매자가 판단하게 한다.
+     * 그래도 없으면 단어가 일부라도 맞는 같은 종류 상품을 후보로 남긴다. AI 표현이 우리 표기와 다를 수 있어서, 없다고 단정하지 않는다
      */
     private Need withStatus(Need n) {
-        AiSearchResponse r = search.search(String.join(" ", n.keywords()), false);
-        List<String> products = r.match() != Match.ALL_WORDS ? List.of() : r.products().stream()
+        List<String> products = matchingNames(n, phrase -> search.findAllWords(phrase).stream()
+                .filter(p -> nameHasHead(p, phrase)).toList());
+        List<String> similar = products.isEmpty() ? matchingNames(n, search::findSimilar) : List.of();
+        return new Need(n.need(), n.category(), n.phrases(), n.queries(), n.searches(),
+                products.isEmpty() ? Status.NEW : Status.EXISTING, products, similar);
+    }
+
+    /** 상품 이름에 표현의 맨 뒤 단어(상품 종류)가 있는지. 띄어쓰기는 무시한다 ("USB-C 멀티 허브" ↔ "멀티허브") */
+    static boolean nameHasHead(ProductResponse p, String phrase) {
+        List<String> words = com.flashdeal.product.SearchText.words(phrase);
+        if (words.isEmpty()) return false;
+        String head = words.get(words.size() - 1);
+        String name = String.join("", com.flashdeal.product.SearchText.words(p.name()));
+        return name.contains(head) || (p.subCategoryLabel() != null && p.subCategoryLabel().contains(head));
+    }
+
+    /** 표현마다 찾아서, AI가 고른 종류의 상품 이름만 최대 3개 */
+    private static List<String> matchingNames(Need n, java.util.function.Function<String, List<ProductResponse>> finder) {
+        return n.phrases().stream()
+                .flatMap(phrase -> finder.apply(phrase).stream())
                 .filter(p -> "OTHER".equals(n.category()) || p.category().name().equals(n.category()))
-                .map(ProductResponse::name).limit(3).toList();
-        return new Need(n.need(), n.category(), n.keywords(), n.queries(), n.searches(),
-                products.isEmpty() ? Status.NEW : Status.EXISTING, products);
+                .map(ProductResponse::name)
+                .distinct().limit(3).toList();
     }
 
     /** 최근 days일 동안 못 찾은 검색을 검색어별로 센다 (많은 순) */

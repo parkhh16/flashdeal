@@ -9,9 +9,13 @@ export function describe(log: ActivityLog): string {
   const failed = log.statusCode >= 400
   const error = d.error ? ` · ${str(d.error)}` : ''
   switch (log.eventType) {
-    case 'LOGIN': return failed ? `로그인 실패 (${str(d.email)})` : `로그인 (${str(d.email)})`
+    // 서버는 아이디(가려서)를 loginId로 남긴다. 이메일로 로그인하던 때의 기록은 email에 있다
+    case 'LOGIN': {
+      const who = str(d.loginId ?? d.email)
+      return `${failed ? '로그인 실패' : '로그인'}${who ? ` (${who})` : ''}`
+    }
     case 'SIGNUP': return failed ? `회원가입 실패${error}` : '회원가입'
-    case 'SEARCH': return `"${str(d.q)}" 검색${d.results !== undefined ? ` · 결과 ${str(d.results)}건` : ''}${error}`
+    case 'SEARCH': return `"${str(d.q)}" 검색${d.results !== undefined ? ` · 결과 ${str(d.results)}건` : ''}${d.demo ? ' · 시연용 기록' : ''}${error}`
     case 'PRODUCT_VIEW': return `상품 #${str(d.productId)} 조회${error}`
     case 'ORDER_CREATE': return failed
       ? `주문 실패 (상품 ${(d.items as string[] | undefined)?.join(', ') ?? ''})${error}`

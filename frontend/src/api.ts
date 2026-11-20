@@ -148,8 +148,10 @@ export interface AdminOrder extends Order { userId: number; userName: string | n
 export interface FailedQuery { query: string; searches: number; lastMatch: SearchMatch }
 /** NEW: 우리 가게에 없는 상품 → 등록 추천 / EXISTING: 있는데 손님 말로는 못 찾음 → 상품 설명·태그 보완 */
 export interface DemandNeed {
-  need: string; category: string; keywords: string[]; queries: string[]; searches: number
+  need: string; category: string; phrases: string[]; queries: string[]; searches: number
   status: 'NEW' | 'EXISTING'; products: string[]
+  /** NEW일 때 단어가 일부 맞는 같은 종류 상품 (없다고 단정하지 않고 판매자가 판단) */
+  similar: string[] | null
 }
 export interface DemandReport { createdAt: string; days: number; failedSearches: number; needs: DemandNeed[] }
 export interface DemandView {

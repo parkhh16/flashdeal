@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 129개, H2 (약 3분)
+./gradlew test                                          # 전체 133개, H2 (약 3분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력

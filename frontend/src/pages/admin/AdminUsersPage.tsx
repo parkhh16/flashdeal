@@ -53,7 +53,7 @@ export function AdminUsersPage() {
                 return (
                   <tr key={u.id} className={u.status === 'WITHDRAWN' ? 'inactive' : ''}>
                     <td className="nowrap">
-                      <div className="cell-title">{u.name} {u.role === 'ADMIN' && <span className="role admin">ADMIN</span>}</div>
+                      <div className="cell-title">{u.name} {u.role === 'ADMIN' && <span className="role role-admin">ADMIN</span>}</div>
                       <div className="muted">{u.loginId ?? '(탈퇴)'} · #{u.id}</div>
                     </td>
                     <td>{u.email}</td>

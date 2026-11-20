@@ -43,7 +43,7 @@ export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMe
           {session && (
             <div className="account" ref={menuRef}>
               <button className="ghost" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu">
-                {session.name}님{session.role === 'ADMIN' && <span className="role admin">ADMIN</span>} ▾
+                {session.name}님{session.role === 'ADMIN' && <span className="role role-admin">ADMIN</span>} ▾
               </button>
               {menuOpen && (
                 <div className="account-menu" role="menu">

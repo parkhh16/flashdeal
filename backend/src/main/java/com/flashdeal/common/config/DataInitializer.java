@@ -109,6 +109,8 @@ public class DataInitializer implements ApplicationRunner {
 
     private int demoSearches() {
         LocalDateTime now = LocalDateTime.now();
+        // 기록 순서(id)와 시각이 같은 방향이 되게: 가장 먼저 넣는 기록이 가장 오래된 것 (6시간 간격, 최근 약 2주)
+        int total = DEMO_SEARCHES.values().stream().mapToInt(Integer::intValue).sum();
         int i = 0;
         for (var e : DEMO_SEARCHES.entrySet()) {
             var r = aiSearchService.search(e.getKey());
@@ -121,7 +123,7 @@ public class DataInitializer implements ApplicationRunner {
                 try {
                     activityRecorder.record(new ActivityRecorder.Entry(null, ActivityEventType.SEARCH, "GET",
                             "/api/products/search", 200, 0, "seed-demo", objectMapper.writeValueAsString(detail),
-                            now.minusDays(i % 14).minusHours(i % 9)));
+                            now.minusHours((long) (total - i) * 6)));
                 } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
                     throw new IllegalStateException(ex);
                 }

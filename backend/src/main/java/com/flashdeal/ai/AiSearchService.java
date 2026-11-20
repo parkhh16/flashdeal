@@ -101,6 +101,29 @@ public class AiSearchService {
         return exact.with(relaxed, relaxed.isEmpty() ? Match.NONE : Match.RELAXED);
     }
 
+    /**
+     * 표현 하나로 단어가 모두 맞는 상품만 찾는다. 오타 교정·완화 없이 쿼리 1번 (등록 추천에서 "있는 상품인가" 확인용)
+     */
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findAllWords(String phrase) {
+        return products.findAllWords(toWordQuery(rules.parse(phrase)));
+    }
+
+    /**
+     * 표현 하나로 단어가 가장 많이 맞는 상품 (등록 추천에서 "비슷한 상품 후보" 보여 주기용).
+     * 맨 뒤 단어(상품 종류)는 꼭 맞아야 한다. 안 그러면 "USB 카메라"의 후보로 "USB 허브"가 나온다
+     */
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findSimilar(String phrase) {
+        WordQuery q = toWordQuery(rules.parse(phrase));
+        if (q.required().isEmpty() && !q.words().isEmpty()) {
+            String head = q.words().get(q.words().size() - 1);
+            q = new WordQuery(q.category(), q.minPrice(), q.maxPrice(), List.of(head),
+                    q.words().subList(0, q.words().size() - 1), q.excludes());
+        }
+        return products.findBestWords(q);
+    }
+
     private AiSearchResponse searchAllWords(String query) {
         SearchFilter f = rules.parse(query);
         List<ProductResponse> found = products.findAllWords(toWordQuery(f));

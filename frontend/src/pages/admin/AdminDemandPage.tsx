@@ -8,19 +8,34 @@ const CATEGORY: Record<string, string> = {
 const MATCH: Record<SearchMatch, string> = {
   NONE: '결과 없음', SOME_WORDS: '일부 단어만 맞음', RELAXED: '조건을 풀어서 보여 줌', ALL_WORDS: '모두 맞음',
 }
+const FAILED_PREVIEW = 15
 const quote = (qs: string[]) => qs.map(q => `"${q}"`).join(', ')
 
-/** 할 일을 한 줄로. 판매 예측이 아니라 "찾았는데 없던 수요"만 말한다 */
-function todo(n: DemandNeed) {
-  return n.status === 'NEW'
-    ? '우리 가게에 없는 상품이에요. 등록을 검토해 보세요.'
-    : `'${n.keywords.join(' ')}'(으)로 찾으면 ${n.products.join(', ')}이(가) 나와요. 손님이 쓴 말로는 못 찾았으니 상품 설명에 그 표현을 넣어 보세요.`
+/**
+ * 구분과 할 일. 판매 예측이 아니라 "찾았는데 없던 수요"만 말하고, AI 표현이 우리 표기와 다를 수 있어서 "없다"고 단정하지 않는다
+ */
+function verdict(n: DemandNeed): { label: string; cls: string; todo: string } {
+  const similar = n.similar ?? []
+  if (n.status === 'EXISTING') {
+    return {
+      label: '있는데 못 찾음', cls: 's-demand-existing',
+      todo: `있는 상품: ${n.products.join(', ')}. 손님이 쓴 말로는 안 나오니 상품 설명에 그 표현을 넣어 보세요.`,
+    }
+  }
+  if (similar.length > 0) {
+    return {
+      label: '확인 필요', cls: 's-demand-check',
+      todo: `딱 맞는 상품은 없고 비슷한 상품이 있어요: ${similar.join(', ')}. 같은 상품이면 설명에 손님 표현을 넣고, 아니면 등록을 검토해 보세요.`,
+    }
+  }
+  return { label: '등록 추천', cls: 's-demand-new', todo: '판매자 표현으로 검색해도 맞는 상품이 없어요. 등록을 검토해 보세요.' }
 }
 
 export function AdminDemandPage() {
   const { toast, fail } = useApp()
   const [view, setView] = useState<DemandView | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showAll, setShowAll] = useState(false)
 
   const load = () => adminApi.demand().then(r => setView(r.data)).catch(fail)
   useEffect(() => { load() }, [])
@@ -40,6 +55,10 @@ export function AdminDemandPage() {
 
   if (!view) return <div className="admin-body"><p className="muted">불러오는 중…</p></div>
   const report = view.report
+  const grouped = new Set(report?.needs.flatMap(n => n.queries) ?? [])
+  // AI가 어느 묶음에도 넣지 않은 검색어. 숨기지 않고 보여 준다 (AI가 빠뜨린 것인지 판매자가 확인할 수 있게)
+  const ungrouped = report ? view.failed.filter(f => !grouped.has(f.query)).slice(0, 10) : []
+  const failed = showAll ? view.failed : view.failed.slice(0, FAILED_PREVIEW)
 
   return (
     <div className="admin-body">
@@ -51,13 +70,13 @@ export function AdminDemandPage() {
       )}
 
       <section className="panel">
-        <div className="panel-head">
+        <div className="panel-head demand-head">
           <h3>AI 정리</h3>
-          <div className="filter-bar">
+          <div className="demand-actions">
             {report && <span className="muted">{new Date(report.createdAt).toLocaleString('ko-KR')} · 최근 {report.days}일 · 못 찾은 검색 {report.failedSearches}건</span>}
             <button className="ghost small" onClick={generate} disabled={busy || !view.aiEnabled}
                     title={view.aiEnabled ? 'Gemini 응답을 기다리므로 수 초 걸립니다' : '서버에 GEMINI_API_KEY가 없어 AI 정리를 할 수 없습니다'}>
-              {busy ? '정리하는 중…' : '지금 다시 정리'}
+              {busy ? '정리하는 중… (수 초)' : '지금 다시 정리'}
             </button>
           </div>
         </div>
@@ -69,26 +88,29 @@ export function AdminDemandPage() {
         )}
         {report && report.needs.length === 0 && <p className="muted">정리할 만한 못 찾은 검색이 없었어요.</p>}
         {report && report.needs.length > 0 && (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>구분</th><th>손님이 찾던 상품</th><th>검색 횟수</th><th>묶인 검색어</th><th>할 일</th></tr></thead>
-              <tbody>
-                {report.needs.map(n => (
-                  <tr key={n.need}>
-                    <td className="nowrap">
-                      <span className={`status ${n.status === 'NEW' ? 's-demand-new' : 's-demand-existing'}`}>
-                        {n.status === 'NEW' ? '등록 추천' : '있는데 못 찾음'}
-                      </span>
-                    </td>
-                    <td><div className="cell-title">{n.need}</div><div className="muted">{CATEGORY[n.category] ?? n.category}</div></td>
-                    <td className="num">{n.searches}</td>
-                    <td>{quote(n.queries)}</td>
-                    <td>{todo(n)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="demand-list">
+            {report.needs.map(n => {
+              const v = verdict(n)
+              return (
+                <li key={n.need}>
+                  <div className="demand-title">
+                    <span className={`status ${v.cls}`}>{v.label}</span>
+                    <strong>{n.need}</strong>
+                    <span className="muted">{CATEGORY[n.category] ?? n.category}</span>
+                    <span className="demand-count">검색 {n.searches}회</span>
+                  </div>
+                  <div className="muted">손님 검색어: {quote(n.queries)}</div>
+                  <div>{v.todo}</div>
+                  <div className="muted small-note">확인한 판매자 표현: {quote(n.phrases)}</div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {ungrouped.length > 0 && (
+          <p className="muted small-note">
+            AI가 어느 묶음에도 넣지 않은 검색어: {quote(ungrouped.map(f => f.query))}
+          </p>
         )}
       </section>
 
@@ -103,7 +125,7 @@ export function AdminDemandPage() {
             <table className="data-table">
               <thead><tr><th>검색어</th><th>횟수</th><th>최근 결과</th></tr></thead>
               <tbody>
-                {view.failed.map(f => (
+                {failed.map(f => (
                   <tr key={f.query}>
                     <td>{f.query}</td>
                     <td className="num">{f.searches}</td>
@@ -113,6 +135,11 @@ export function AdminDemandPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {view.failed.length > FAILED_PREVIEW && (
+          <button className="ghost small more-button" onClick={() => setShowAll(s => !s)}>
+            {showAll ? '접기' : `${view.failed.length - FAILED_PREVIEW}개 더 보기`}
+          </button>
         )}
       </section>
     </div>
