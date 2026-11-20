@@ -6,7 +6,7 @@
 |---|---|---|
 | 목적 | 코드를 바꿀 때마다 정합성을 빠르게 검증 | 실제 서버 구성으로 띄우고 배포 |
 | 필요한 것 | JDK 21, Node 22 (Docker 불필요) | Docker (Compose) |
-| 실행 | `./gradlew test`, `npm run build`, CI의 `backend`·`frontend` 작업 | `deploy/`의 `docker compose`, CI의 `server-env` 작업 |
+| 실행 | `./gradlew test`, `npm run build`, CI의 `backend`(H2)·`backend-mysql`(Testcontainers)·`frontend` 작업 | `deploy/`의 `docker compose`, CI의 `server-env` 작업 |
 | DB | H2 (또는 `-Pdb=mysql`로 로컬 MySQL) | MySQL 컨테이너 (+ Redis, 앱 2대) |
 | 확인하는 것 | 동시성, 결제 장애, 멱등성, 인가 등 자동 테스트 | 운영 설정 안전장치, HTTPS 프록시, 컨테이너 헬스체크, 프록시를 거친 실제 주문·결제 흐름, 서버 간 캐시 무효화와 요청 한도 |
 

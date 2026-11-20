@@ -57,7 +57,8 @@ npm run dev
 ```bash
 cd backend
 ./gradlew test                                          # 전체 135개, H2 (약 3분)
-DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
+DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 설치된 MySQL의 flashdeal_test 스키마에서
+./gradlew test -Pdb=testcontainers                      # 같은 테스트를 Docker로 띄운 MySQL 8.0에서 (Docker 필요, CI와 같음)
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
 ./gradlew test --tests "*PaymentFailureScenarioTest"    # 결제 장애 시나리오
@@ -78,6 +79,7 @@ cd ../frontend && npm run build                         # 타입 체크 + 빌드
 - 동시성 비교표는 `backend/build/test-results/test/TEST-com.flashdeal.order.StockConcurrencyTest.xml`의 system-out에 있습니다.
 - HTML 리포트: `backend/build/reports/tests/test/index.html`
 - `-Pdb=mysql`은 테스트 전용 스키마(`flashdeal_test`)를 쓰므로 앱 데이터와 섞이지 않습니다.
+- `-Pdb=testcontainers`는 첫 연결 때 `mysql:8.0` 컨테이너를 띄워 테스트가 끝날 때까지 같이 쓰고, 끝나면 지웁니다. MySQL을 설치할 필요가 없어서 CI의 `backend-mysql` 작업이 이 방식으로 돕니다. 테스트 컨텍스트가 여러 개라 `max_connections`를 400으로 올린 설정(`src/test/resources/mysql-conf`)을 씁니다.
 
 ## 4. 부하 테스트
 

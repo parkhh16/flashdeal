@@ -30,7 +30,7 @@
 | Scheduler | ShedLock (JDBC) | 만료·대사 스케줄러를 한 서버에서만 실행. 락을 이미 공유하는 DB에 둬서 결제 복구가 Redis에 의존하지 않음 |
 | AI | Gemini API (REST, 응답 JSON Schema 강제) | 손님이 기다리지 않는 곳에서만 호출: 상품 등록 후 검색 태그 만들기, 하루 한 번 못 찾은 검색어 정리. AI가 판단하고 사실(근거 없는 기능, 검색 횟수, 있는 상품인지)은 코드가 확인. 검색 자체는 규칙과 단어 매칭이라 키가 없어도 동작 |
 | Frontend | React 19, TypeScript, Vite, React Router | |
-| Test / Tool | JUnit 5, Node 부하 테스트 스크립트, Swagger, GitHub Actions | 테스트를 H2와 MySQL 양쪽에서 실행. CI는 테스트, 빌드, 서버 환경 스모크 테스트까지 |
+| Test / Tool | JUnit 5, Testcontainers, Node 부하 테스트 스크립트, Swagger, GitHub Actions | CI가 같은 테스트를 H2와 MySQL 8.0(Testcontainers) 양쪽에서 실행하고, 빌드와 서버 환경(서버 2대) 스모크 테스트까지 |
 | Infra | Docker Compose, Caddy | 서버 환경을 파일 하나로 재현. Caddy는 HTTPS 인증서 발급, 정적 파일, 프록시, 헬스체크 기반 라우팅을 설정 몇 줄로 처리 |
 | (쓰지 않음) | Redis 분산락 | 재고가 DB 한 행에 있어서 DB 락으로 원자성이 보장됨. 분산락은 DB 밖 자원을 조율할 때 쓰는 도구라고 판단 ([자세히](docs/issues/01-stock-concurrency.md#왜-redis-분산락을-쓰지-않았나)). Redis는 캐시 무효화 전파와 요청 한도 카운터에만 씀 |
 
@@ -87,7 +87,7 @@
 - **돈과 재고가 걸린 순서를 지킴**: 결제 결과를 모르는 주문은 만료·취소 대상에서 제외, 환불은 PG 환불이 성공한 뒤에만 우리 쪽 상태 변경
 - **재고는 덮어쓰지 않고 증감으로**: 관리자 조정과 재고 복구는 `stock = stock + :delta`. 가용 재고와 결제 대기 수량을 따로 표시
 - **서버를 늘려도 깨지지 않게**: 정합성은 DB가 지키고, 서버 메모리에 기댄 것만 손봄. 스케줄러는 DB 락으로 한 서버에서만, 사용자 캐시는 커밋 후 삭제하고 다른 서버에 전파, 요청 한도는 공유 카운터
-- **테스트는 운영과 같은 DB에서도**: 같은 테스트 81개를 `./gradlew test -Pdb=mysql`로 MySQL에서 실행
+- **테스트는 운영과 같은 DB에서도**: 같은 테스트 135개를 CI에서 MySQL 8.0으로도 실행 (Testcontainers가 Docker로 띄움, 로컬은 `-Pdb=mysql`)
 - **안전하지 않으면 운영 서버가 뜨지 않게**: 데모 JWT 키, `admin/admin`, 데모 회원, H2, 개발 도구 중 하나라도 남아 있으면 `prod` 프로필 기동을 중단 (fail fast)
 - **부가 기능이 핵심 흐름을 막지 않게**: 활동 로그는 비동기 배치 적재(실패 시 버림), AI는 검색·상품 저장 요청 밖의 백그라운드 작업에서만 호출하고 실패하면 다음 주기에 다시
 - **요청 하나를 끝까지 추적**: traceId를 서버 로그, 에러 응답, 응답 헤더, 활동 로그에 연결
@@ -312,7 +312,8 @@ erDiagram
 cd backend && ./gradlew bootRun                     # 백엔드 (H2) → http://localhost:8080
 cd frontend && npm install && npm run dev           # 프론트엔드 → http://localhost:5173
 cd backend && ./gradlew test                        # 테스트 (H2)
-cd backend && DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql   # 같은 테스트를 MySQL에서
+cd backend && DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql   # 같은 테스트를 설치된 MySQL에서
+cd backend && ./gradlew test -Pdb=testcontainers         # 같은 테스트를 Docker로 띄운 MySQL 8.0에서 (CI와 같음)
 node loadtest/order-rush.mjs --all --stock 2000 --requests 2000  # 부하 테스트 (서버 실행 중)
 
 # ── 서버 환경 (Docker) ──
@@ -361,7 +362,7 @@ docs/issues/       기술적 이슈별 문제 → 원인 → 해결 → 결과
 docs/guide.md      실행 가이드 (테스트 환경)
 docs/deploy.md     서버 환경 가이드 (Docker, 배포)
 deploy/            서버 환경: docker-compose (MySQL + Redis + 앱 2대 + Caddy), .env 예시, 스모크 테스트
-.github/workflows  ci.yml (테스트, 빌드, 서버 환경 스모크 테스트), deploy.yml (수동 배포)
+.github/workflows  ci.yml (H2·MySQL 테스트, 빌드, 서버 환경 스모크 테스트), deploy.yml (수동 배포)
 loadtest/          HTTP 부하 테스트
 scripts/           상품 이미지 수집
 ```
@@ -376,5 +377,5 @@ scripts/           상품 이미지 수집
 - **결제 결과 반영은 동기 방식입니다.** 트래픽이 커지면 Outbox 패턴과 메시지 큐로 분리하는 것이 다음 단계입니다.
 - **DB가 한계에 도달하면** 락을 더하는 대신 Redis `DECR`로 재고 게이트를 앞단에 두고 DB에는 비동기로 반영하는 구조를 검토합니다.
 - 멱등 레코드가 처리 중(IN_PROGRESS) 상태로 서버가 죽으면 그 키는 409로 남습니다. 오래된 레코드를 정리하는 배치가 필요합니다.
-- CI(GitHub Actions)는 H2로 테스트합니다. Testcontainers로 CI에서도 MySQL 테스트를 돌리는 것이 다음 단계입니다.
+- **상시 운영하는 서버는 없습니다.** 운영 프로필, Docker 이미지, HTTPS 프록시, 배포 워크플로는 갖췄고 CI가 push마다 서버 2대 구성을 실제로 띄워 확인합니다. 다만 사용자가 없는 데모를 서버 비용을 내며 계속 띄워 두는 것은 얻는 것에 비해 비용이 커서 하지 않았습니다. 화면은 로컬에서 바로 띄울 수 있습니다 (아래 실행 방법).
 - 검색 품질은 질의 72개 평가셋으로 잽니다 (◎ 정확 28 → 66). 이 질의들은 규칙을 다듬으면서 본 것이라, 만든 사람이 보지 않은 질의로 다시 재는 것이 다음 단계입니다. 등록 추천의 검색 기록은 시연용으로 만든 데이터입니다 ([#15](docs/issues/11-ai-search.md)).
