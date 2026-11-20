@@ -1,0 +1,4 @@
+# -Pdb=testcontainers 로 띄우는 MySQL 설정 (build.gradle의 TC_MY_CNF=mysql-conf)
+# 테스트는 Spring 컨텍스트가 여러 개 떠서 커넥션 풀도 여러 개다. 기본 max_connections(151)에 걸리지 않게 늘린다
+[mysqld]
+max_connections=400
