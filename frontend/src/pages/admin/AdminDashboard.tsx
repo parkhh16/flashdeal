@@ -7,7 +7,7 @@ import { describe, localIso, resultClass } from './activityFormat'
 
 const TYPE_LABEL: Partial<Record<ActivityType, string>> = {
   LOGIN: '로그인', SEARCH: '검색', PRODUCT_VIEW: '상품 조회', ORDER_CREATE: '주문', IDEMPOTENT_REPLAY: '멱등성 재생',
-  PAYMENT: '결제', ORDER_VIEW: '주문 조회', ADMIN_ACTION: '관리자 작업', ERROR: '서버 에러', SIGNUP: '회원가입',
+  PAYMENT: '결제', ORDER_VIEW: '주문 조회', ADMIN_ACTION: '관리자 작업', ERROR: '서버 에러', AI_FAILURE: '외부 AI 실패', SIGNUP: '회원가입',
 }
 
 export function StatCards({ summary }: { summary: ActivitySummary | null }) {
@@ -18,7 +18,7 @@ export function StatCards({ summary }: { summary: ActivitySummary | null }) {
       <div className="stat"><span>주문 성공</span><strong>{s ? s.orders.toLocaleString() : '–'}</strong></div>
       <div className={`stat ${s && s.serverErrors > 0 ? 'alert' : ''}`}>
         <span>서버 에러율 (5xx)</span><strong>{s ? `${(s.errorRate * 100).toFixed(1)}%` : '–'}</strong>
-        {s && <small>5xx {s.serverErrors}건 · 4xx {s.clientErrors}건</small>}
+        {s && <small>5xx {s.serverErrors}건 · 4xx {s.clientErrors}건{s.aiFailures > 0 && <> · <span title="Gemini 과부하 등 외부 AI가 응답하지 않은 요청. 우리 서버 장애가 아니라서 에러율에 넣지 않습니다">외부 AI 실패 {s.aiFailures}건 (제외)</span></>}</small>}
       </div>
       <div className="stat"><span>평균 응답시간</span><strong>{s ? `${Math.round(s.avgLatencyMs)}ms` : '–'}</strong></div>
     </div>

@@ -54,7 +54,8 @@ public class ProductTagJob {
             try {
                 checked = tagger.tag(p); // 트랜잭션 밖에서 부른다 (응답을 기다리는 동안 DB 커넥션을 쥐고 있지 않게)
             } catch (RuntimeException e) {
-                log.warn("event=PRODUCT_TAG_FAILED productId={} cause={}", p.getId(), e.toString());
+                log.warn("event=PRODUCT_TAG_FAILED productId={} cause={}", p.getId(),
+                        org.springframework.core.NestedExceptionUtils.getMostSpecificCause(e).toString());
                 continue;
             }
             // 모델이 답을 못 주면(안전 차단 등) 빈 태그로 끝낸다. 같은 내용으로 매 주기 다시 부르지 않게

@@ -25,6 +25,7 @@ export function describe(log: ActivityLog): string {
     case 'ORDER_VIEW': return `주문 상세 조회 ${log.target.replace('/api/orders/', '#')}${error}`
     case 'ADMIN_ACTION': return `${log.method} ${log.target.replace('/api/admin/', '')}${error}`
     case 'ERROR': return `서버 오류 · ${log.method} ${log.target}${error}`
+    case 'AI_FAILURE': return `외부 AI 응답 없음 · ${log.method} ${log.target.replace('/api/admin/', '')}`
     default: return `${log.method} ${log.target}`
   }
 }

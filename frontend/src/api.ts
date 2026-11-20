@@ -114,7 +114,7 @@ export const api = {
 
 // ── 활동 로그 / 관리자 ──
 export type ActivityType = 'LOGIN' | 'SIGNUP' | 'SEARCH' | 'PRODUCT_VIEW' | 'ORDER_CREATE' | 'IDEMPOTENT_REPLAY'
-  | 'PAYMENT' | 'ORDER_VIEW' | 'ADMIN_ACTION' | 'ERROR'
+  | 'PAYMENT' | 'ORDER_VIEW' | 'ADMIN_ACTION' | 'ERROR' | 'AI_FAILURE'
 export type StatusClass = 'SUCCESS' | 'CLIENT_ERROR' | 'SERVER_ERROR'
 export interface ActivityLog {
   id: number; userId: number | null; userName: string | null; eventType: ActivityType; eventLabel: string
@@ -124,6 +124,8 @@ export interface ActivityLog {
 export interface ActivitySummary {
   totalRequests: number; orders: number; clientErrors: number; serverErrors: number
   errorRate: number; avgLatencyMs: number; byType: Partial<Record<ActivityType, number>>; droppedLogs: number
+  /** 외부 AI가 응답하지 않아 실패한 요청. 우리 서버 장애가 아니라서 serverErrors·errorRate에 들어 있지 않다 */
+  aiFailures: number
 }
 export interface ActivityFilter { userId?: number; type?: ActivityType; status?: StatusClass; from?: string; to?: string }
 export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'WITHDRAWN'

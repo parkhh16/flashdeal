@@ -9,6 +9,7 @@ const TYPES: { value: ActivityType; label: string }[] = [
   { value: 'LOGIN', label: '로그인' }, { value: 'SEARCH', label: '검색' }, { value: 'PRODUCT_VIEW', label: '상품 조회' },
   { value: 'ORDER_CREATE', label: '주문' }, { value: 'IDEMPOTENT_REPLAY', label: '멱등성 재생' }, { value: 'PAYMENT', label: '결제' },
   { value: 'ADMIN_ACTION', label: '관리자 작업' }, { value: 'ERROR', label: '서버 에러' },
+  { value: 'AI_FAILURE', label: '외부 AI 실패' },
 ]
 const STATUSES: { value: StatusClass; label: string }[] = [
   { value: 'SUCCESS', label: '성공 (2xx)' }, { value: 'CLIENT_ERROR', label: '요청 오류 (4xx)' }, { value: 'SERVER_ERROR', label: '서버 오류 (5xx)' },

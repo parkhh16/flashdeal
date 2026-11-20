@@ -16,7 +16,9 @@ public enum ActivityEventType {
     ORDER_VIEW("주문 조회"),
     ADMIN_ACTION("관리자 작업"),
     ACCOUNT("계정 변경"),
-    ERROR("서버 에러");
+    ERROR("서버 에러"),
+    /** 외부 AI(Gemini)가 응답하지 않음. 우리 서버 장애가 아니라서 서버 에러율에 넣지 않고 따로 센다 */
+    AI_FAILURE("외부 AI 실패");
 
     private final String label;
 }

@@ -61,9 +61,18 @@ public class ActivityLogFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         ActivityEventType type = routeType(method, uri, response);
         if (type != null && response.getStatus() >= 500) {
-            return ActivityEventType.ERROR;
+            return isAiFailure(request) ? ActivityEventType.AI_FAILURE : ActivityEventType.ERROR;
         }
         return type;
+    }
+
+    /**
+     * 외부 AI가 응답하지 않아 실패한 요청인지 (에러 코드 AI…). 관리자 "등록 추천" 버튼이 Gemini 과부하(503)로 실패해도
+     * 대시보드의 서버 에러율이 빨갛게 오르지 않게 따로 분류한다
+     */
+    private static boolean isAiFailure(HttpServletRequest request) {
+        Object detail = request.getAttribute(ActivityContext.DETAIL);
+        return detail instanceof Map<?, ?> d && String.valueOf(d.get("errorCode")).startsWith("AI");
     }
 
     private ActivityEventType routeType(String method, String uri, HttpServletResponse response) {

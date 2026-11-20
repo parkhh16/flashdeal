@@ -165,7 +165,7 @@ public class DemandService {
                 groups = gemini.generate(INSTRUCTION, toJson(input), SCHEMA, Groups.class)
                         .orElseThrow(() -> new BusinessException(ErrorCode.AI_UNAVAILABLE));
             } catch (org.springframework.web.client.RestClientException e) {
-                log.warn("event=DEMAND_AI_FAILED cause={}", e.toString());
+                log.warn("event=DEMAND_AI_FAILED cause={}", e.getMostSpecificCause().toString()); // 시간 초과가 "응답 해석 실패"로 감싸여 와서 원인을 꺼낸다
                 throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
             }
             needs = check(groups, input).stream().map(this::withStatus).toList();

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -47,7 +48,7 @@ class GeminiClientTest {
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         gemini = MockRestServiceServer.bindTo(builder).build();
-        client = new GeminiClient(CONFIG, builder, new ObjectMapper());
+        client = new GeminiClient(CONFIG, builder, new ObjectMapper(), Duration.ZERO);
     }
 
     /**
@@ -106,11 +107,23 @@ class GeminiClientTest {
     }
 
     @Test
-    @DisplayName("서버 오류(500), 한도 초과(429), 시간 초과는 예외 → 호출한 작업이 다음 주기에 다시 시도한다")
+    @DisplayName("모델이 붐빔(503)이면 그 자리에서 다시 시도한다 (실제 실패가 모두 이 경우였고, 수 초 뒤엔 성공했다)")
+    void retriesWhenOverloaded() throws Exception {
+        gemini.expect(ExpectedCount.twice(), requestTo(URL)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        gemini.expect(requestTo(URL)).andRespond(withSuccess(interaction("""
+                {"tags":["조용한"]}"""), MediaType.APPLICATION_JSON));
+
+        assertThat(client.generate("지시문", "키보드", SCHEMA, Tags.class).orElseThrow().tags()).containsExactly("조용한");
+        gemini.verify();
+    }
+
+    @Test
+    @DisplayName("서버 오류가 세 번 계속되면, 한도 초과(429)·시간 초과는 바로 예외 → 호출한 작업이 다음 주기에 다시 시도한다")
     void errorsAreThrown() {
-        gemini.expect(requestTo(URL)).andRespond(withServerError());
+        gemini.expect(ExpectedCount.times(GeminiClient.MAX_ATTEMPTS), requestTo(URL)).andRespond(withServerError());
         assertThatThrownBy(() -> client.generate("지시문", "키보드", SCHEMA, Tags.class))
                 .isInstanceOf(HttpServerErrorException.class);
+        gemini.verify();
 
         gemini.reset();
         gemini.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
@@ -127,7 +140,7 @@ class GeminiClientTest {
     @DisplayName("키가 비어 있으면 꺼진 상태 (AI 작업을 건너뛴다)")
     void disabledWithoutKey() {
         var noKey = new GeminiClient(new FlashDealProperties.Ai(" ", "m", Duration.ofSeconds(1)),
-                RestClient.builder(), new ObjectMapper());
+                RestClient.builder(), new ObjectMapper(), Duration.ZERO);
 
         assertThat(noKey.isEnabled()).isFalse();
         assertThat(client.isEnabled()).isTrue();

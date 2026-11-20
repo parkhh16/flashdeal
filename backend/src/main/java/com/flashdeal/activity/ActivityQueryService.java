@@ -47,8 +47,10 @@ public class ActivityQueryService {
     public record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {
     }
 
+    /** @param aiFailures 외부 AI(Gemini)가 응답하지 않아 실패한 요청 수. 우리 서버 장애가 아니라서 serverErrors·errorRate에 넣지 않는다 */
     public record Summary(long totalRequests, long orders, long clientErrors, long serverErrors, double errorRate,
-                          double avgLatencyMs, Map<ActivityEventType, Long> byType, long droppedLogs) {
+                          double avgLatencyMs, Map<ActivityEventType, Long> byType, long droppedLogs,
+                          long aiFailures) {
     }
 
 
@@ -77,10 +79,10 @@ public class ActivityQueryService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 select event_type, count(*) as cnt,
                        sum(case when status_code between 400 and 499 then 1 else 0 end) as client_errors,
-                       sum(case when status_code >= 500 then 1 else 0 end) as server_errors,
+                       sum(case when status_code >= 500 and event_type <> 'AI_FAILURE' then 1 else 0 end) as server_errors,
                        sum(latency_ms) as latency_sum
                 from activity_log""" + where + " group by event_type", params);
-        long total = 0, client = 0, server = 0, latency = 0, orders = 0;
+        long total = 0, client = 0, server = 0, latency = 0, orders = 0, aiFailures = 0;
         Map<ActivityEventType, Long> byType = new EnumMap<>(ActivityEventType.class);
         for (Map<String, Object> r : rows) {
             ActivityEventType type = ActivityEventType.valueOf((String) r.get("event_type"));
@@ -90,10 +92,11 @@ public class ActivityQueryService {
             client += num(r.get("client_errors"));
             server += num(r.get("server_errors"));
             latency += num(r.get("latency_sum"));
+            if (type == ActivityEventType.AI_FAILURE) aiFailures += cnt;
             if (type == ActivityEventType.ORDER_CREATE) orders += cnt - num(r.get("client_errors")) - num(r.get("server_errors"));
         }
         return new Summary(total, orders, client, server, total == 0 ? 0 : (double) server / total,
-                total == 0 ? 0 : (double) latency / total, byType, recorder.droppedCount());
+                total == 0 ? 0 : (double) latency / total, byType, recorder.droppedCount(), aiFailures);
     }
 
     /** 사용자용: 개발자 정보(상태코드, 지연시간, 파서 종류)는 빼고 사용자 언어로 된 정보만 */

@@ -1,6 +1,7 @@
 package com.flashdeal.activity;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.flashdeal.ai.GeminiClient;
 import com.flashdeal.auth.User;
 import com.flashdeal.auth.UserRepository;
 import com.flashdeal.product.Product;
@@ -15,6 +16,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +25,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -32,6 +37,7 @@ class ActivityLogTest {
     @Autowired TestFixtures fixtures;
     @Autowired UserRepository userRepository;
     @Autowired PasswordEncoder encoder;
+    @MockitoBean GeminiClient gemini;
 
     private Product product;
     private Session user;
@@ -68,6 +74,26 @@ class ActivityLogTest {
         assertThat(orderLog.get("detail").get("orderNo").asText()).startsWith("ORD-");
         assertThat(orderLog.get("requestId").asText()).isNotBlank();
         assertThat(logs.get("content").get(3).get("detail").get("loginId").asText()).contains("***");
+    }
+
+    @Test
+    @DisplayName("외부 AI(Gemini)가 응답하지 않아 실패한 요청은 '외부 AI 실패'로 따로 세고, 서버 에러율에는 넣지 않는다")
+    void aiFailureIsNotServerError() {
+        when(gemini.isEnabled()).thenReturn(true);
+        when(gemini.generate(anyString(), anyString(), anyMap(), any()))
+                .thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
+        get(user, "/api/products/search?q=" + "없는상품검색어");   // 등록 추천이 AI를 부르려면 못 찾은 검색이 있어야 한다
+
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(admin.token());
+        ResponseEntity<JsonNode> res = rest.exchange("/api/admin/demand/report", HttpMethod.POST, new HttpEntity<>(h), JsonNode.class);
+        assertThat(res.getStatusCode().value()).isEqualTo(503);
+
+        JsonNode summary = get(admin, "/api/admin/activity/summary?userId=" + admin.id()).getBody();
+        assertThat(summary.get("aiFailures").asInt()).isEqualTo(1);
+        assertThat(summary.get("serverErrors").asInt()).isZero();
+        assertThat(summary.get("errorRate").asDouble()).isZero();
+        assertThat(summary.get("byType").get("AI_FAILURE").asInt()).isEqualTo(1);
     }
 
     @Test

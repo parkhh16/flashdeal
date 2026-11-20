@@ -56,7 +56,7 @@ npm run dev
 
 ```bash
 cd backend
-./gradlew test                                          # 전체 133개, H2 (약 3분)
+./gradlew test                                          # 전체 135개, H2 (약 3분)
 DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 MySQL flashdeal_test 스키마에서
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -124,7 +124,7 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 | `flashdeal.payment.reconcile-grace` | 5s | 대사 대상이 되기까지 기다리는 시간 |
 | `flashdeal.ai.api-key` | `GEMINI_API_KEY` | 없으면 AI 태그·등록 추천 정리를 건너뜀 (검색은 그대로) |
 | `flashdeal.ai.model` | gemini-3.5-flash-lite | 태그, 등록 추천에 쓰는 모델 |
-| `flashdeal.ai.timeout` | 30s | 백그라운드 작업이라 넉넉하게. 실측 0.8~2.5초(2026-11-14) ~ 7.5초(2026-11-18). 실패하면 다음 주기에 다시 |
+| `flashdeal.ai.timeout` | 20s | 호출 한 번의 시간 제한. 성공한 호출은 실측 0.8~11초. 모델 과부하(5xx)면 2초·4초 뒤 최대 3번까지 다시 시도하되 10초가 지나면 그만 (429·시간 초과는 다시 시도하지 않음) |
 | `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
 | `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
 | `flashdeal.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |

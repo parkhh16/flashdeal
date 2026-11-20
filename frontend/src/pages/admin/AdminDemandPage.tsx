@@ -75,8 +75,8 @@ export function AdminDemandPage() {
           <div className="demand-actions">
             {report && <span className="muted">{new Date(report.createdAt).toLocaleString('ko-KR')} · 최근 {report.days}일 · 못 찾은 검색 {report.failedSearches}건</span>}
             <button className="ghost small" onClick={generate} disabled={busy || !view.aiEnabled}
-                    title={view.aiEnabled ? 'Gemini 응답을 기다리므로 수 초 걸립니다' : '서버에 GEMINI_API_KEY가 없어 AI 정리를 할 수 없습니다'}>
-              {busy ? '정리하는 중… (수 초)' : '지금 다시 정리'}
+                    title={view.aiEnabled ? 'Gemini 응답을 기다립니다. 보통 10초 안팎, 붐비면 서버가 몇 번 다시 시도해서 30초쯤 걸릴 수 있습니다' : '서버에 GEMINI_API_KEY가 없어 AI 정리를 할 수 없습니다'}>
+              {busy ? '정리하는 중… (AI가 붐비면 30초쯤 걸릴 수 있어요)' : '지금 다시 정리'}
             </button>
           </div>
         </div>
