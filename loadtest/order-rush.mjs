@@ -7,7 +7,7 @@
  *   node loadtest/order-rush.mjs --requests 3000 --concurrency 200 --stock 100
  *
  * --all / --strategy 는 서버를 재시작하지 않고 재고 전략을 바꾸는 개발 도구 API를 쓴다.
- * 서버를 FLASHDEAL_DEV_TOOLS_ENABLED=true 로 띄워야 한다 (기본값은 꺼짐, 운영에서는 켜지 않는다).
+ * 서버를 NEEDSSHOP_DEV_TOOLS_ENABLED=true 로 띄워야 한다 (기본값은 꺼짐, 운영에서는 켜지 않는다).
  *
  * 흐름: 관리자 로그인 → 사용자 N명 가입 → (전략마다) 전략 전환 → 전용 테스트 상품 생성 → 동시 주문 폭주 → 정합성 검증 → 테스트 상품 판매 중지
  *
@@ -128,7 +128,7 @@ if (admin.status !== 200) {
 const devTools = (await call('GET', '/api/admin/stock-strategy', { token: admin.data.accessToken })).status === 200
 if (!devTools && STRATEGIES.some(Boolean)) {
   await die('재고 전략을 바꾸는 개발 도구 API가 꺼져 있습니다 (--all / --strategy 사용 불가).',
-    '서버를 FLASHDEAL_DEV_TOOLS_ENABLED=true 로 다시 띄우거나, 옵션 없이 서버의 현재 전략으로 실행하세요.')
+    '서버를 NEEDSSHOP_DEV_TOOLS_ENABLED=true 로 다시 띄우거나, 옵션 없이 서버의 현재 전략으로 실행하세요.')
 }
 console.log(`사용자 ${USERS}명 준비 중...`)
 const tokens = await prepareUsers()

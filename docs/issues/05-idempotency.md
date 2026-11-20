@@ -40,6 +40,6 @@
 
 ## 관련 코드
 
-- [`IdempotencyService`](../../backend/src/main/java/com/flashdeal/idempotency/IdempotencyService.java)
-- [`IdempotencyRecord`](../../backend/src/main/java/com/flashdeal/idempotency/IdempotencyRecord.java): `UNIQUE(user_id, idempotency_key)`
+- [`IdempotencyService`](../../backend/src/main/java/com/needsshop/idempotency/IdempotencyService.java)
+- [`IdempotencyRecord`](../../backend/src/main/java/com/needsshop/idempotency/IdempotencyRecord.java): `UNIQUE(user_id, idempotency_key)`
 - 테스트: `OrderApiTest` (`doubleClick`, `replay`, `keyReusedWithDifferentBody`)

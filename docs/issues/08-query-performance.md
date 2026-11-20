@@ -56,5 +56,5 @@ PK를 역순으로 훑으면서 다른 사용자의 주문까지 읽고 버립�
 
 - [`application.yml`](../../backend/src/main/resources/application.yml): `default_batch_fetch_size`, `open-in-view: false`
 - [`V1__init.sql`](../../backend/src/main/resources/db/migration/V1__init.sql): `idx_orders_user_id_id`
-- [`OrderRepository`](../../backend/src/main/java/com/flashdeal/order/OrderRepository.java)
+- [`OrderRepository`](../../backend/src/main/java/com/needsshop/order/OrderRepository.java)
 - 테스트: `OrderQueryPerformanceTest` (`nPlusOne`, `batchFetch`, `explain`)

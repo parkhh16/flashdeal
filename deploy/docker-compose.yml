@@ -6,22 +6,22 @@
 #   ./smoke-test.sh             # 프록시를 거쳐 조회, 가입, 주문, 결제, 서버 간 캐시 무효화까지 확인
 #
 # 테스트 환경(서버 없이 ./gradlew test, CI)과 분리되어 있다. 자세한 내용은 docs/deploy.md
-name: flashdeal
+name: needs-shop
 
 # 앱 서버 공통 설정. app과 app2는 같은 이미지, 같은 설정으로 뜨고 기동 순서만 다르다
 x-app: &app
-  image: ${IMAGE_PREFIX:-flashdeal}-app:${IMAGE_TAG:-local}
+  image: ${IMAGE_PREFIX:-needs-shop}-app:${IMAGE_TAG:-local}
   environment:
     SPRING_PROFILES_ACTIVE: prod   # prod는 mysql 프로필을 함께 켠다. 비밀값이 없으면 기동하지 않는다
     DB_HOST: mysql
-    DB_USER: flashdeal
+    DB_USER: needs_shop
     DB_PASSWORD: ${DB_PASSWORD}
     JWT_SECRET: ${JWT_SECRET:?.env에 JWT_SECRET을 설정하세요 (openssl rand -base64 32)}
     ADMIN_PASSWORD: ${ADMIN_PASSWORD:?.env에 ADMIN_PASSWORD를 설정하세요 (12자 이상)}
     SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     GEMINI_API_KEY: ${GEMINI_API_KEY:-}   # 없으면 AI 태그·등록 추천 정리만 건너뜀 (검색은 그대로)
     # 서버가 여러 대: 사용자 캐시 무효화를 다른 서버에 전파하고, 요청 한도를 Redis 한 곳에서 센다
-    FLASHDEAL_REDIS_ENABLED: "true"
+    NEEDSSHOP_REDIS_ENABLED: "true"
     REDIS_HOST: redis
     TZ: Asia/Seoul
   # 힙은 이 한도의 75% (Dockerfile의 MaxRAMPercentage). 한도가 없으면 두 대가 각자 서버 메모리의 75%를 노린다
@@ -33,8 +33,8 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD를 설정하세요}
-      MYSQL_DATABASE: flashdeal
-      MYSQL_USER: flashdeal          # 앱은 root가 아니라 이 스키마 전용 계정으로 접속한다
+      MYSQL_DATABASE: needs_shop
+      MYSQL_USER: needs_shop          # 앱은 root가 아니라 이 스키마 전용 계정으로 접속한다
       MYSQL_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정하세요}
       TZ: Asia/Seoul
     volumes:
@@ -75,7 +75,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${IMAGE_PREFIX:-flashdeal}-web:${IMAGE_TAG:-local}
+    image: ${IMAGE_PREFIX:-needs-shop}-web:${IMAGE_TAG:-local}
     build: ../frontend
     # app2는 기동만 기다린다. 준비되기 전까지는 프록시가 헬스 체크로 빼 두고, app2가 죽어도 사이트는 열린다
     depends_on:

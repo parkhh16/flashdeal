@@ -1,6 +1,6 @@
 spring:
   application:
-    name: flashdeal
+    name: needs-shop
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -15,7 +15,7 @@ spring:
       prod: mysql
   datasource:
     # 설치 없이 바로 실행되도록 기본은 H2(MySQL 호환 모드). LOCK_TIMEOUT은 비관적 락 대기 시간(ms)
-    url: jdbc:h2:mem:flashdeal;MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:needs-shop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1
     username: sa
     password:
     hikari:
@@ -54,15 +54,15 @@ management:
           include: readinessState,db
   health:
     redis:
-      enabled: ${flashdeal.redis.enabled:false}
+      enabled: ${needsshop.redis.enabled:false}
 
 logging:
   pattern:
     console: "%d{HH:mm:ss.SSS} %-5level [%X{traceId:-system}] %logger{20} - %msg%n"
   level:
-    com.flashdeal: INFO
+    com.needsshop: INFO
 
-flashdeal:
+needsshop:
   jwt:
     # 데모용 키. 운영에서는 반드시 환경변수 JWT_SECRET으로 주입해야 한다 (Base64, 256bit 이상)
     secret: ${JWT_SECRET:Zmxhc2hkZWFsLWRlbW8tc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzIQ==}
@@ -113,7 +113,7 @@ spring:
     activate:
       on-profile: mysql
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/flashdeal?serverTimezone=Asia/Seoul&createDatabaseIfNotExist=true
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/needs_shop?serverTimezone=Asia/Seoul&createDatabaseIfNotExist=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
   jpa:
@@ -150,7 +150,7 @@ logging:
     format:
       console: ecs   # 로그 수집기가 읽기 쉬운 JSON. MDC의 traceId, userId가 필드로 들어간다
 
-flashdeal:
+needsshop:
   jwt:
     secret: ${JWT_SECRET:}
   rate-limit:

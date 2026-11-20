@@ -1,4 +1,4 @@
-# ⚡ FlashDeal
+# ⚡ 니즈샵
 
 **재고가 한정된 상품에 주문이 몰려도 재고와 돈이 어긋나지 않는 쇼핑몰 주문·결제 시스템**
 
@@ -297,7 +297,7 @@ erDiagram
 | GET / POST | `/api/admin/orders`, `/api/admin/orders/{id}/cancel` | ADMIN | 주문 조회, 취소(환불) |
 | GET | `/api/admin/consistency-report` | ADMIN | 주문 ↔ 결제 정합성 리포트 |
 | GET / POST | `/api/admin/demand`, `/api/admin/demand/report` | ADMIN | 못 찾은 검색어 집계 / 지금 AI로 다시 정리 |
-| GET / PUT | `/api/admin/stock-strategy`, `/api/admin/stock-strategy/{type}` | ADMIN | 재고 전략 조회 / 전환. **개발 도구 플래그를 켠 경우에만 존재** (`flashdeal.dev-tools.enabled`, 기본값 꺼짐). 부하 테스트용 |
+| GET / PUT | `/api/admin/stock-strategy`, `/api/admin/stock-strategy/{type}` | ADMIN | 재고 전략 조회 / 전환. **개발 도구 플래그를 켠 경우에만 존재** (`needsshop.dev-tools.enabled`, 기본값 꺼짐). 부하 테스트용 |
 
 </details>
 
@@ -341,7 +341,7 @@ ADMIN_PASSWORD=<.env의 값> ./smoke-test.sh          # 프록시를 거쳐 조�
 <summary>펼치기</summary>
 
 ```
-backend/src/main/java/com/flashdeal
+backend/src/main/java/com/needsshop
 ├── auth/          회원가입·로그인·탈퇴, JWT + 토큰 버전 검증, SecurityConfig
 ├── product/       상품, 카테고리, 필터·정렬, stock/ 재고 차감 전략 4가지
 ├── order/         상태 머신, 주문 생성(재시도 Facade), 1인 제한, 만료 스케줄러, 취소

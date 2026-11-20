@@ -53,10 +53,10 @@ JWT는 서버에 상태를 두지 않아서, 회원이 탈퇴하거나 관리자
 
 ## 관련 코드
 
-- [`JwtAuthenticationFilter`](../../backend/src/main/java/com/flashdeal/auth/JwtAuthenticationFilter.java): 서명 검증 + 토큰 버전·정지 확인
-- [`UserAuthCache`](../../backend/src/main/java/com/flashdeal/auth/UserAuthCache.java): 사용자 상태 캐시 (30초, 변경 시 즉시 삭제)
-- [`AuthService`](../../backend/src/main/java/com/flashdeal/auth/AuthService.java): 가입, 로그인 잠금, 탈퇴
-- [`User`](../../backend/src/main/java/com/flashdeal/auth/User.java): `withdraw`(익명화), `token_version`
-- [`AdminUserService`](../../backend/src/main/java/com/flashdeal/admin/AdminUserService.java): 정지·해제, 강제 로그아웃, 잠금 해제
+- [`JwtAuthenticationFilter`](../../backend/src/main/java/com/needsshop/auth/JwtAuthenticationFilter.java): 서명 검증 + 토큰 버전·정지 확인
+- [`UserAuthCache`](../../backend/src/main/java/com/needsshop/auth/UserAuthCache.java): 사용자 상태 캐시 (30초, 변경 시 즉시 삭제)
+- [`AuthService`](../../backend/src/main/java/com/needsshop/auth/AuthService.java): 가입, 로그인 잠금, 탈퇴
+- [`User`](../../backend/src/main/java/com/needsshop/auth/User.java): `withdraw`(익명화), `token_version`
+- [`AdminUserService`](../../backend/src/main/java/com/needsshop/admin/AdminUserService.java): 정지·해제, 강제 로그아웃, 잠금 해제
 - [`V4__user_account.sql`](../../backend/src/main/resources/db/migration/V4__user_account.sql)
 - 테스트: `AuthFlowTest` (`concurrentSignup`, `lockout`, `noUserEnumeration`, `withdraw`, `adminControls`), `OrderApiTest.authorization`, `ActivityLogTest.authorization`

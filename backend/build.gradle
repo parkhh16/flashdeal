@@ -4,7 +4,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.flashdeal'
+group = 'com.needsshop'
 version = '0.0.1'
 
 java {
@@ -60,20 +60,20 @@ tasks.named('test') {
         exceptionFormat = 'full'
     }
     // 같은 테스트를 실제 MySQL(InnoDB)에서 실행한다 (기본은 H2)
-    //   ./gradlew test -Pdb=mysql          : 이미 떠 있는 MySQL. 접속 정보는 DB_HOST / DB_USER / DB_PASSWORD, 스키마는 flashdeal_test를 새로 만들어 쓴다
+    //   ./gradlew test -Pdb=mysql          : 이미 떠 있는 MySQL. 접속 정보는 DB_HOST / DB_USER / DB_PASSWORD, 스키마는 needs_shop_test를 새로 만들어 쓴다
     //   ./gradlew test -Pdb=testcontainers : Docker로 MySQL을 띄워서 (설치 불필요, CI용). 서버 환경과 같은 mysql:8.0
     def db = project.findProperty('db')
     if (db == 'mysql') {
         def host = System.getenv('DB_HOST') ?: 'localhost'
         systemProperty 'spring.datasource.url',
-                "jdbc:mysql://${host}:3306/flashdeal_test?serverTimezone=Asia/Seoul&createDatabaseIfNotExist=true&rewriteBatchedStatements=true"
+                "jdbc:mysql://${host}:3306/needs_shop_test?serverTimezone=Asia/Seoul&createDatabaseIfNotExist=true&rewriteBatchedStatements=true"
         systemProperty 'spring.datasource.username', System.getenv('DB_USER') ?: 'root'
         systemProperty 'spring.datasource.password', System.getenv('DB_PASSWORD') ?: ''
     } else if (db == 'testcontainers') {
         // Testcontainers JDBC URL: 첫 연결 때 컨테이너를 띄우고, TC_DAEMON으로 테스트가 끝날 때까지 하나를 같이 쓴다.
         // TC_MY_CNF는 test 리소스의 mysql-conf 디렉터리 (max_connections를 늘린 설정)
         systemProperty 'spring.datasource.url',
-                'jdbc:tc:mysql:8.0:///flashdeal_test?TC_DAEMON=true&TC_MY_CNF=mysql-conf&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true'
+                'jdbc:tc:mysql:8.0:///needs_shop_test?TC_DAEMON=true&TC_MY_CNF=mysql-conf&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true'
         systemProperty 'spring.datasource.driver-class-name', 'org.testcontainers.jdbc.ContainerDatabaseDriver'
         systemProperty 'spring.datasource.username', 'test'
         systemProperty 'spring.datasource.password', 'test'

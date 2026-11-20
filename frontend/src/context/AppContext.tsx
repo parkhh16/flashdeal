@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError, setSessionInvalidHandler, setToken, type Session } from '../api'
 
-const STORAGE_KEY = 'flashdeal.session'
+const STORAGE_KEY = 'needsshop.session'
 
 interface Toast { id: number; kind: 'success' | 'error' | 'info'; message: string }
 

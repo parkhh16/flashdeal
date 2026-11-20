@@ -70,9 +70,9 @@ PG 환불 (트랜잭션 밖) → 성공한 경우에만 [결제 취소 + 주문 
 
 ## 관련 코드
 
-- [`PaymentService`](../../backend/src/main/java/com/flashdeal/payment/PaymentService.java), [`PaymentTxService`](../../backend/src/main/java/com/flashdeal/payment/PaymentTxService.java): TX1 → PG 호출 → TX2
-- [`HttpPgClient`](../../backend/src/main/java/com/flashdeal/payment/HttpPgClient.java): 타임아웃, 재시도, 응답 본문 기준 판정
-- [`PaymentReconciler`](../../backend/src/main/java/com/flashdeal/payment/PaymentReconciler.java): 대사 배치
-- [`OrderCancelService`](../../backend/src/main/java/com/flashdeal/order/OrderCancelService.java): 환불 취소
-- [`MockPgController`](../../backend/src/main/java/com/flashdeal/mockpg/MockPgController.java), [`ChaosSettings`](../../backend/src/main/java/com/flashdeal/mockpg/ChaosSettings.java): Mock PG와 장애 주입
+- [`PaymentService`](../../backend/src/main/java/com/needsshop/payment/PaymentService.java), [`PaymentTxService`](../../backend/src/main/java/com/needsshop/payment/PaymentTxService.java): TX1 → PG 호출 → TX2
+- [`HttpPgClient`](../../backend/src/main/java/com/needsshop/payment/HttpPgClient.java): 타임아웃, 재시도, 응답 본문 기준 판정
+- [`PaymentReconciler`](../../backend/src/main/java/com/needsshop/payment/PaymentReconciler.java): 대사 배치
+- [`OrderCancelService`](../../backend/src/main/java/com/needsshop/order/OrderCancelService.java): 환불 취소
+- [`MockPgController`](../../backend/src/main/java/com/needsshop/mockpg/MockPgController.java), [`ChaosSettings`](../../backend/src/main/java/com/needsshop/mockpg/ChaosSettings.java): Mock PG와 장애 주입
 - 테스트: `PaymentFailureScenarioTest`, `AdminFeaturesTest` (`cancelPaidRefunds`, `cannotCancelPaying`)

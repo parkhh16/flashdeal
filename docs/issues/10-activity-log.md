@@ -29,7 +29,7 @@
 
 - **의미 있는 요청만** 남깁니다: 로그인, 검색, 상품 조회, 주문, 멱등성 재생, 결제, 관리자 작업, 서버 에러(5xx).
 - 목록 새로고침, 폴링, 로그 조회 API 자신은 남기지 않습니다. 다 남기면 정작 필요한 기록이 묻힙니다.
-- **개인정보는 마스킹**합니다. 로그인 이메일은 `us***@flashdeal.com`처럼 저장합니다.
+- **개인정보는 마스킹**합니다. 로그인 이메일은 `us***@needs-shop.com`처럼 저장합니다.
 
 ## 요청 하나를 끝까지 따라가기: traceId
 
@@ -46,9 +46,9 @@
 
 ## 관련 코드
 
-- [`ActivityLogFilter`](../../backend/src/main/java/com/flashdeal/activity/ActivityLogFilter.java): 기록할 요청 선별
-- [`AuthService.mask`](../../backend/src/main/java/com/flashdeal/auth/AuthService.java): 로그인 아이디·이메일 마스킹
-- [`ActivityRecorder`](../../backend/src/main/java/com/flashdeal/activity/ActivityRecorder.java): 메모리 큐, 300ms 배치 INSERT, 버린 개수 집계
-- [`ActivityQueryService`](../../backend/src/main/java/com/flashdeal/activity/ActivityQueryService.java): 관리자 조회, 대시보드 요약
-- [`TraceIdFilter`](../../backend/src/main/java/com/flashdeal/common/logging/TraceIdFilter.java)
+- [`ActivityLogFilter`](../../backend/src/main/java/com/needsshop/activity/ActivityLogFilter.java): 기록할 요청 선별
+- [`AuthService.mask`](../../backend/src/main/java/com/needsshop/auth/AuthService.java): 로그인 아이디·이메일 마스킹
+- [`ActivityRecorder`](../../backend/src/main/java/com/needsshop/activity/ActivityRecorder.java): 메모리 큐, 300ms 배치 INSERT, 버린 개수 집계
+- [`ActivityQueryService`](../../backend/src/main/java/com/needsshop/activity/ActivityQueryService.java): 관리자 조회, 대시보드 요약
+- [`TraceIdFilter`](../../backend/src/main/java/com/needsshop/common/logging/TraceIdFilter.java)
 - 테스트: `ActivityLogTest`
