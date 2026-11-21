@@ -20,8 +20,8 @@ interface Props {
 export function Sidebar({ tree, failed, category, sub, searching }: Props) {
   const allActive = !category && !sub && !searching
   return (
-    <aside className="sidebar" aria-label="카테고리">
-      <h2 className="sidebar-title">카테고리</h2>
+    <aside className="sidebar" aria-labelledby="sidebar-title">
+      <h2 id="sidebar-title" className="sidebar-title">카테고리</h2>
       <nav aria-label="카테고리 목록">
         <ul>
           <li>

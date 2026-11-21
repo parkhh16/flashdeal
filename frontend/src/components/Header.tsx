@@ -36,14 +36,18 @@ export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => setMenuOpen(false), [location.pathname])
   // 메뉴 바깥을 누르면 닫는다
   useEffect(() => {
     if (!menuOpen) return
     const close = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false) }
+    // Esc로도 닫고 포커스를 버튼으로 돌려준다 (키보드 사용자가 메뉴 안에 갇히지 않게)
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenuOpen(false); triggerRef.current?.focus() } }
     document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
   }, [menuOpen])
 
   const doLogout = () => {
@@ -71,7 +75,7 @@ export function Header() {
           {session && (
             <div className="account" ref={menuRef}>
               {/* 아바타만 있으면 메뉴 버튼인지 알 수 없다. 좁은 창에서는 "내 활동·관리자"가 이 메뉴 안에만 있어서 ▾를 붙인다 */}
-              <button className="account-trigger" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label={`${session.name}님 계정 메뉴`}>
+              <button ref={triggerRef} className="account-trigger" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label={`${session.name}님 계정 메뉴`}>
                 <span className="avatar" aria-hidden="true">{Array.from(session.name)[0] ?? '?'}</span>
                 <ChevronDownIcon className="account-chevron" />
               </button>
