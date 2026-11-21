@@ -48,6 +48,12 @@ export function collectProblems(page) {
 
 export async function settle(page) {
   await page.waitForLoadState('networkidle').catch(() => {})
+  // loading="lazy" 이미지는 fullPage 캡처 때 화면 밖이면 안 불러온 채 찍힌다. 끝까지 스크롤하고 모든 이미지가 끝날 때까지 기다린다
+  await page.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += 500) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 60)) }
+    window.scrollTo(0, 0)
+    await Promise.all([...document.images].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; setTimeout(r, 3000) })))
+  }).catch(() => {})
   await page.evaluate(() => document.fonts?.ready).catch(() => {})
   await page.waitForTimeout(250)
 }
