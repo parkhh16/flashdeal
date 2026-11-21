@@ -4,6 +4,10 @@
 .admin-tabs a { padding: 10px 14px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 600; font-size: 14px; }
 .admin-tabs a:hover { color: var(--text); }
 .admin-tabs a.active { color: var(--text); border-bottom-color: var(--accent); }
+@media (max-width: 640px) {
+  .admin-tabs { display: grid; grid-template-columns: repeat(3, 1fr); overflow-x: visible; }
+  .admin-tabs a { text-align: center; padding-left: 4px; padding-right: 4px; }
+}
 .admin-intro h2 { margin: 0 0 4px; font-size: 22px; }
 .admin-intro p { margin: 0; color: var(--muted); font-size: 14px; max-width: 820px; line-height: 1.6; }
 .admin-body { display: flex; flex-direction: column; gap: 16px; }
