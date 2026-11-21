@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, type AiSearchResult, type CategoryTree, type Product, type SortKey } from '../api'
 import { ProductCard } from '../components/ProductCard'
 import { useApp } from '../context/AppContext'
@@ -34,34 +34,14 @@ function applyLocal(products: Product[], sort: SortKey, excludeSoldOut: boolean)
   return list.sort(cmp[sort])
 }
 
-/** 상품 목록 위의 검색창. 검색어가 없을 때는 예시 검색어를 보여줘서 "자연어로 검색할 수 있다"는 걸 알려준다 */
-function SearchBox({ current }: { current: string | null }) {
-  const navigate = useNavigate()
-  const [value, setValue] = useState(current ?? '')
-  useEffect(() => setValue(current ?? ''), [current])
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    const q = value.trim()
-    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/')
-  }
-
+/** 검색창은 헤더로 옮겼다. 예시 검색어는 히어로(다음 단계)가 생기기 전까지 목록 위에 임시로 둔다 */
+function SearchExamples({ current }: { current: string | null }) {
+  if (current) return null
   return (
-    <form className="search-box" onSubmit={submit} role="search">
-      <div className="search-field">
-        <span className="search-icon" aria-hidden="true">🔍</span>
-        <input value={value} onChange={e => setValue(e.target.value)} aria-label="상품 검색"
-               placeholder="예: 5만원 이하 무선 마우스" />
-        {value && <button type="button" className="clear" onClick={() => { setValue(''); navigate('/') }} aria-label="검색어 지우기">×</button>}
-        <button type="submit">검색</button>
-      </div>
-      {!current && (
-        <div className="search-examples">
-          <span className="muted">이렇게 검색해보세요</span>
-          {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
-        </div>
-      )}
-    </form>
+    <div className="search-examples shop-examples">
+      <span className="muted">이렇게 검색해보세요</span>
+      {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
+    </div>
   )
 }
 
@@ -154,7 +134,7 @@ export function ShopPage() {
 
   return (
     <div className="shop">
-      <SearchBox current={q} />
+      <SearchExamples current={q} />
       <div className="shop-head">
         <nav className="crumbs" aria-label="현재 위치">
           <Link to="/">홈</Link>
