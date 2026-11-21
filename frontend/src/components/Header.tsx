@@ -1,8 +1,36 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { CloseIcon, LogoMark, SearchIcon } from './icons'
 
-export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMenu?: boolean }) {
+/** 헤더 검색. 제출 동작은 기존 SearchBox와 같다: 값이 있으면 /?q=..., 없으면 / */
+function HeaderSearch() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const current = params.get('q')
+  const [value, setValue] = useState(current ?? '')
+  useEffect(() => setValue(current ?? ''), [current])
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const q = value.trim()
+    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/')
+  }
+
+  return (
+    <form className="header-search" onSubmit={submit} role="search">
+      <div className="hs-field">
+        <SearchIcon className="hs-icon" />
+        <input value={value} onChange={e => setValue(e.target.value)} aria-label="상품 검색"
+               placeholder="예: 5만원 이하 무선 마우스" />
+        {value && <button type="button" className="hs-clear" onClick={() => { setValue(''); navigate('/') }} aria-label="검색어 지우기"><CloseIcon /></button>}
+        <button type="submit" className="hs-submit" aria-label="검색"><SearchIcon /></button>
+      </div>
+    </form>
+  )
+}
+
+export function Header() {
   const { session, logout, toast } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -29,11 +57,11 @@ export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMe
   return (
     <header className="header">
       <div className="header-inner">
-        {showMenu && <button className="icon-btn only-mobile" onClick={onMenu} aria-label="카테고리 열기">☰</button>}
-        <Link to="/" className="brand"><span className="bolt">⚡</span>니즈샵</Link>
+        <Link to="/" className="brand"><LogoMark />니즈샵</Link>
+        {!location.pathname.startsWith('/admin') && <HeaderSearch />}
         <nav className="header-nav">
-          {session?.role === 'ADMIN' && <NavLink to="/admin">관리자</NavLink>}
-          {session && <NavLink to="/me" end>내 활동</NavLink>}
+          {session?.role === 'ADMIN' && <NavLink to="/admin" className="pc-only">관리자</NavLink>}
+          {session && <NavLink to="/me" end className="pc-only">내 활동</NavLink>}
           {!session && (
             <>
               <Link to={`/login?next=${next}`} className="header-link">로그인</Link>
@@ -42,12 +70,12 @@ export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMe
           )}
           {session && (
             <div className="account" ref={menuRef}>
-              <button className="ghost" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu">
-                {session.name}님{session.role === 'ADMIN' && <span className="role role-admin">ADMIN</span>} ▾
+              <button className="avatar" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label={`${session.name}님 계정 메뉴`}>
+                <span aria-hidden="true">{Array.from(session.name)[0] ?? '?'}</span>
               </button>
               {menuOpen && (
                 <div className="account-menu" role="menu">
-                  <div className="menu-title">{session.loginId}</div>
+                  <div className="menu-title"><strong>{session.name}님</strong>{session.loginId}</div>
                   <Link role="menuitem" to="/me">내 활동</Link>
                   <Link role="menuitem" to="/me/account">계정 설정</Link>
                   {session.role === 'ADMIN' && <Link role="menuitem" to="/admin">관리자</Link>}

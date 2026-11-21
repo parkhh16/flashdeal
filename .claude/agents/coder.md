@@ -1,6 +1,6 @@
 ---
 name: coder
-description: 니즈샵 백엔드(Java 21, Spring Boot) 기능 구현, 버그 수정, 리팩토링을 할 때 사용한다. 주문, 재고, 결제, 인증 코드를 건드릴 때는 반드시 이 에이전트로 진행한다. 구현이 끝나면 reviewer와 tester를 거친다.
+description: 니즈샵 백엔드(Java 21, Spring Boot) 기능 구현, 버그 수정, 리팩토링을 할 때 사용한다. 주문, 재고, 결제, 인증 코드를 건드릴 때는 반드시 이 에이전트로 진행한다. 구현이 끝나면 reviewer와 tester를 거친다. 프론트(frontend/) 작업에는 쓰지 않는다. 프론트는 frontend-coder를 쓴다.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 

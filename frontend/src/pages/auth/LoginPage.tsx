@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api'
+import { LogoMark } from '../../components/icons'
 import { useApp } from '../../context/AppContext'
 
 /** 외부 사이트로 튕겨 나가지 않게, 앱 내부 경로만 next로 허용한다 (오픈 리다이렉트 방지) */
@@ -45,7 +46,11 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={submit} noValidate>
-        <h2>로그인</h2>
+        <div className="auth-top">
+          <LogoMark />
+          <h1>로그인</h1>
+          <p className="muted">계속하려면 로그인하세요</p>
+        </div>
         <label>아이디 또는 이메일
           <input autoFocus autoComplete="username" value={loginId} onChange={e => setLoginId(e.target.value)} required />
         </label>
@@ -53,13 +58,13 @@ export function LoginPage() {
           <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="auth-submit" disabled={submitting || !loginId || !password}>
+        <button type="submit" className="auth-submit" disabled={submitting || !loginId || !password} aria-busy={submitting}>
           {submitting ? '로그인 중…' : '로그인'}
         </button>
         <p className="auth-alt">아직 회원이 아니신가요? <Link to={`/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}>회원가입</Link></p>
 
         <div className="demo-box">
-          <strong>데모 계정</strong>
+          <strong>데모 계정으로 체험하기</strong>
           <span className="muted">누르면 입력칸이 채워집니다. 로그인 버튼은 직접 눌러주세요.</span>
           <div className="demo-list">
             {DEMO.map(d => (

@@ -11,6 +11,5 @@ export function remaining(ms: number) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-export const CATEGORY_ICON: Record<string, string> = {
-  KEYBOARD: '⌨️', MOUSE: '🖱️', MONITOR: '🖥️', AUDIO: '🎧', ACCESSORY: '🧩',
-}
+/** 이 수량 이하로 남았을 때만 "N개 남음"을 보여준다 (디자인 제안값. 3 / 5 / 10 중에서 바꿀 수 있게 한 곳에 둔다) */
+export const LOW_STOCK_THRESHOLD = 10

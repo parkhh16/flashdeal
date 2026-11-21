@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Header } from './components/Header'
-import { Sidebar } from './components/Sidebar'
 import { AppProvider, useApp } from './context/AppContext'
 import { AdminActivityPage } from './pages/admin/AdminActivityPage'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
@@ -30,21 +29,18 @@ function RequireAuth({ admin = false, children }: { admin?: boolean; children: R
 }
 
 function Layout() {
-  const [drawer, setDrawer] = useState(false)
   const location = useLocation()
   const fullWidth = location.pathname.startsWith('/admin') || ['/login', '/signup'].includes(location.pathname)
 
-  // 페이지를 이동하면 모바일 드로어를 닫고 맨 위로 스크롤한다
+  // 페이지를 이동하면 맨 위로 스크롤한다
   useEffect(() => {
-    setDrawer(false)
     window.scrollTo(0, 0)
   }, [location.pathname, location.search])
 
   return (
     <div className="app">
-      <Header onMenu={() => setDrawer(true)} showMenu={!fullWidth} />
+      <Header />
       <div className={`body ${fullWidth ? 'wide' : ''}`}>
-        {!fullWidth && <Sidebar open={drawer} onClose={() => setDrawer(false)} />}
         <main className="main">
           <Routes>
             <Route path="/" element={<ShopPage />} />

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, type AiSearchResult, type CategoryTree, type Product, type SortKey } from '../api'
+import { CategoryRail } from '../components/CategoryRail'
+import { EmptySearchIcon } from '../components/icons'
 import { ProductCard } from '../components/ProductCard'
 import { useApp } from '../context/AppContext'
-import { won } from '../format'
+import { LOW_STOCK_THRESHOLD, won } from '../format'
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'POPULAR', label: '인기순' },
@@ -34,34 +36,23 @@ function applyLocal(products: Product[], sort: SortKey, excludeSoldOut: boolean)
   return list.sort(cmp[sort])
 }
 
-/** 상품 목록 위의 검색창. 검색어가 없을 때는 예시 검색어를 보여줘서 "자연어로 검색할 수 있다"는 걸 알려준다 */
-function SearchBox({ current }: { current: string | null }) {
-  const navigate = useNavigate()
-  const [value, setValue] = useState(current ?? '')
-  useEffect(() => setValue(current ?? ''), [current])
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    const q = value.trim()
-    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/')
-  }
-
+function ExampleChips({ className, label }: { className: string; label?: string }) {
   return (
-    <form className="search-box" onSubmit={submit} role="search">
-      <div className="search-field">
-        <span className="search-icon" aria-hidden="true">🔍</span>
-        <input value={value} onChange={e => setValue(e.target.value)} aria-label="상품 검색"
-               placeholder="찾는 상품을 말하듯이 입력해보세요 — 예: 5만원 이하 무선 마우스" />
-        {value && <button type="button" className="clear" onClick={() => { setValue(''); navigate('/') }} aria-label="검색어 지우기">×</button>}
-        <button type="submit">검색</button>
-      </div>
-      {!current && (
-        <div className="search-examples">
-          <span className="muted">이렇게 검색해보세요</span>
-          {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
-        </div>
-      )}
-    </form>
+    <div className={className} role="group" aria-label={label ?? '예시 검색어'}>
+      {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`}>{s}</Link>)}
+    </div>
+  )
+}
+
+/** 홈 히어로. 정적이고 상품 데이터에 의존하지 않는다 (목록이 로딩 중이거나 실패해도 그대로 보인다) */
+function Hero() {
+  return (
+    <section className="hero" aria-labelledby="hero-title">
+      <span className="hero-eyebrow">수량 한정 · 선착순 판매</span>
+      <h1 id="hero-title">정해진 수량만큼만,<br />좋은 물건을 골랐어요</h1>
+      <p>재고가 모두 팔리면 판매가 끝나요. 남은 수량은 상품마다 그대로 보여드려요.</p>
+      <ExampleChips className="hero-examples" />
+    </section>
   )
 }
 
@@ -71,8 +62,12 @@ export function ShopPage() {
   const [products, setProducts] = useState<Product[] | null>(null)
   const [ai, setAi] = useState<AiSearchResult | null>(null)
   const [tree, setTree] = useState<CategoryTree | null>(null)
+  const [failedQ, setFailedQ] = useState<string | null>(null)
+  const [treeFailed, setTreeFailed] = useState(false)
+  const [listFailed, setListFailed] = useState(false)
 
   const q = params.get('q')
+  const searchFailed = !!q && failedQ === q
   const category = params.get('category') ?? undefined
   const sub = params.get('sub') ?? undefined
   const sort = (params.get('sort') as SortKey) || 'POPULAR'
@@ -82,22 +77,24 @@ export function ShopPage() {
   const keyword = params.get('keyword') ?? undefined
   const exact = params.get('exact') === '1'
 
-  useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => undefined) }, [])
+  useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => setTreeFailed(true)) }, [])
 
   useEffect(() => {
     let cancelled = false
     setProducts(null)
+    setListFailed(false)
     if (q) {
       api.aiSearch(q, !exact).then(({ data }) => {
         if (cancelled) return
         setAi(data)
+        setFailedQ(null)
         setProducts(data.products)
-      }).catch(e => { if (!cancelled) { fail(e); setProducts([]) } })
+      }).catch(e => { if (!cancelled) { fail(e); setFailedQ(q); setProducts([]) } })
     } else {
       setAi(null)
       api.products({ category, sub, minPrice, maxPrice, excludeSoldOut, sort, keyword })
         .then(({ data }) => { if (!cancelled) setProducts(data) })
-        .catch(e => { if (!cancelled) { fail(e); setProducts([]) } })
+        .catch(e => { if (!cancelled) { fail(e); setListFailed(true); setProducts([]) } })
     }
     return () => { cancelled = true }
   }, [q, exact, category, sub, sort, minPrice, maxPrice, excludeSoldOut, keyword])
@@ -111,6 +108,14 @@ export function ShopPage() {
   const visible = useMemo(
     () => (products && q ? applyLocal(products, sort, excludeSoldOut) : products),
     [products, q, sort, excludeSoldOut])
+
+  // 홈 무필터: 히어로, "남은 수량이 적은 상품" 레일, 대표 카드는 이때만
+  const isHome = !q && !category && !sub && !keyword && minPrice === undefined && maxPrice === undefined && !excludeSoldOut
+  const lowStock = useMemo(
+    () => (isHome && products
+      ? products.filter(p => !p.soldOut && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).sort((a, b) => a.stock - b.stock).slice(0, 8)
+      : []),
+    [isHome, products])
 
   const catNode = tree?.categories.find(c => c.code === category)
   const subNode = catNode?.children.find(s => s.code === sub)
@@ -149,32 +154,48 @@ export function ShopPage() {
     if (maxPrice !== undefined) conditions.push({ key: 'max', label: `${won(maxPrice)} 이하`, remove: () => update({ max: undefined }) })
   }
 
-  return (
-    <div className="shop">
-      <SearchBox current={q} />
-      <div className="shop-head">
+  const head = (
+    <div className={`shop-head${isHome ? ' compact' : ''}`}>
+      {!isHome && (
         <nav className="crumbs" aria-label="현재 위치">
           <Link to="/">홈</Link>
           {catNode && <> › <Link to={`/?category=${catNode.code}`}>{catNode.label}</Link></>}
           {subNode && <> › <span>{subNode.label}</span></>}
           {q && <> › <span>검색</span></>}
         </nav>
-        <h2>{title} {visible && <span className="muted">{visible.length}개</span>}</h2>
-        {ai?.originalQuery && (
-          <p className="corrected">
-            <strong>"{ai.originalQuery}"</strong> 검색 결과가 없어 <strong>"{ai.query}"</strong>(으)로 검색했어요.{' '}
-            <Link to={`/?q=${encodeURIComponent(ai.originalQuery)}&exact=1`}>"{ai.originalQuery}"(으)로 검색하기</Link>
-          </p>
-        )}
-        {ai?.match === 'SOME_WORDS' && (
-          <p className="corrected">검색어의 단어가 모두 들어간 상품이 없어, 가장 많이 맞는 상품을 보여 드려요.</p>
-        )}
-        {ai?.match === 'RELAXED' && (
-          <p className="corrected">
-            <strong>"{ai.filter.keyword}"</strong>에 맞는 상품이 없어 {conditions.filter(c => c.key !== 'keyword').map(c => c.label).join(' · ')} 조건으로만 찾았어요.
-          </p>
-        )}
-      </div>
+      )}
+      <h2>{title} {visible && <span className="muted">{visible.length}개</span>}</h2>
+      {ai?.originalQuery && (
+        <p className="corrected">
+          <strong>"{ai.originalQuery}"</strong> 검색 결과가 없어 <strong>"{ai.query}"</strong>(으)로 검색했어요.{' '}
+          <Link to={`/?q=${encodeURIComponent(ai.originalQuery)}&exact=1`}>"{ai.originalQuery}"(으)로 검색하기</Link>
+        </p>
+      )}
+      {ai?.match === 'SOME_WORDS' && (
+        <p className="corrected">검색어의 단어가 모두 들어간 상품이 없어, 가장 많이 맞는 상품을 보여 드려요.</p>
+      )}
+      {ai?.match === 'RELAXED' && (
+        <p className="corrected">
+          <strong>"{ai.filter.keyword}"</strong>에 맞는 상품이 없어 {conditions.filter(c => c.key !== 'keyword').map(c => c.label).join(' · ')} 조건으로만 찾았어요.
+        </p>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="shop">
+      {isHome && <Hero />}
+      {!isHome && head}
+      <CategoryRail tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
+
+      {lowStock.length > 0 && (
+        <section className="low-stock" aria-labelledby="low-stock-title">
+          <h2 id="low-stock-title">남은 수량이 적은 상품</h2>
+          <p className="muted">수량이 소진되면 판매가 끝나요</p>
+          <div className="rail-cards">{lowStock.map(p => <ProductCard key={p.id} product={p} />)}</div>
+        </section>
+      )}
+      {isHome && head}
 
       {(ai || conditions.length > 0) && (
         <div className="parsed">
@@ -216,22 +237,34 @@ export function ShopPage() {
       </div>
 
       {visible === null && (
-        <div className="grid">
-          {Array.from({ length: 8 }, (_, i) => <div key={i} className="card skeleton" aria-hidden="true"><div className="sk-img" /><div className="sk-line" /><div className="sk-line short" /></div>)}
+        <div className="grid" aria-busy="true" aria-label="상품을 불러오는 중">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="card skeleton" aria-hidden="true">
+              <div className="sk-img" />
+              <div className="card-body">
+                <div className="sk-line sk-cat" />
+                <div className="sk-name"><div className="sk-line" /><div className="sk-line short" /></div>
+                <div className="sk-line sk-price" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
       {visible && visible.length === 0 && (
-        <div className="empty">
-          <p>조건에 맞는 상품이 없어요.</p>
-          {conditions.length > 0 && <p className="muted">위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?</p>}
-          <div className="suggestions">
-            {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
-          </div>
-          <Link to="/" className="ghost-link">전체 상품 보기</Link>
+        <div className="empty-state">
+          <EmptySearchIcon className="empty-icon" />
+          <h3>{listFailed ? '상품을 불러오지 못했어요' : searchFailed ? '검색에 실패했어요' : '조건에 맞는 상품이 없어요'}</h3>
+          {(listFailed || searchFailed)
+            ? <p className="muted">잠시 뒤 다시 시도하거나 전체 상품을 둘러보세요</p>
+            : <p className="muted">{conditions.length > 0 ? '위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?' : '다른 검색어로 찾아보세요. 이런 검색어는 어때요?'}</p>}
+          {!searchFailed && !listFailed && <ExampleChips className="empty-examples" />}
+          <Link to="/" className="btn-primary">전체 상품 보기</Link>
         </div>
       )}
       {visible && visible.length > 0 && (
-        <div className="grid">{visible.map(p => <ProductCard key={p.id} product={p} />)}</div>
+        <div className="grid">
+          {visible.map((p, i) => <ProductCard key={p.id} product={p} featured={isHome && sort === 'POPULAR' && i === 0} />)}
+        </div>
       )}
     </div>
   )

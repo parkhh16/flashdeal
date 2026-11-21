@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { api, myActivity, type MyActivity, type Order, type OrderStatus } from '../api'
 import { ProductCard } from '../components/ProductCard'
+import { BoxIcon } from '../components/icons'
 import { useApp } from '../context/AppContext'
 import { remaining, won } from '../format'
 import { useNow } from '../hooks'
@@ -58,59 +59,86 @@ export function MyActivityPage() {
 
   return (
     <div className="me-page">
-      <div className="shop-head"><h2>내 활동</h2></div>
+      <header className="me-head">
+        <h1>내 활동</h1>
+        <p className="muted">{session.name}님의 주문과 최근 활동이에요</p>
+      </header>
 
-      <section className="me-section">
-        <h3>주문 내역</h3>
-        {orders === null && <p className="muted">불러오는 중…</p>}
-        {orders?.length === 0 && (
-          <div className="empty small"><p>아직 주문한 상품이 없어요.</p><Link to="/" className="ghost-link">상품 보러가기</Link></div>
-        )}
-        <div className="orders">
-          {orders?.map(o => (
-            <div key={o.id} className="order">
-              <div className="order-head">
-                <span className={`status s-${o.status.toLowerCase()}`}>{STATUS_LABEL[o.status]}</span>
-                <span className="muted">{new Date(o.createdAt).toLocaleString('ko-KR')}</span>
-                <span className="muted">주문번호 {o.orderNo}</span>
-              </div>
-              <ul>
-                {o.items.map(i => (
-                  <li key={i.productId}>
-                    <Link to={`/products/${i.productId}`}>{i.productName}</Link> × {i.quantity} <span className="muted">({won(i.unitPrice)})</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="order-foot">
-                <strong>{won(o.totalAmount)}</strong>
-                {o.status === 'PENDING_PAYMENT' && (
-                  <>
-                    <Countdown until={o.expiresAt} />
-                    <button onClick={() => pay(o)} disabled={paying === o.id}>{paying === o.id ? '결제 중…' : '결제하기'}</button>
-                  </>
-                )}
-                {o.status === 'PAYING' && <span className="muted">결제 결과를 확인하고 있어요. 잠시만 기다려주세요.</span>}
-                {o.status === 'EXPIRED' && <span className="muted">결제 기한이 지나 주문이 자동 취소되었어요.</span>}
-                {o.status === 'CANCELLED' && <span className="muted">취소된 주문이에요. 결제하셨다면 환불이 진행됩니다.</span>}
-              </div>
+      <div className="me-layout">
+        <section className="me-orders" aria-labelledby="me-orders-h">
+          <h2 id="me-orders-h" className="me-h">주문 내역</h2>
+          {orders === null && (
+            <div className="orders" aria-busy="true" aria-label="주문 내역을 불러오는 중">
+              {[0, 1].map(i => (
+                <div key={i} className="order skeleton-order" aria-hidden="true">
+                  <div className="sk-line sk-pill" /><div className="sk-line sk-wide" /><div className="sk-line short" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          )}
+          {orders?.length === 0 && (
+            <div className="empty-state me-empty">
+              <BoxIcon className="empty-icon" />
+              <h3>아직 주문한 상품이 없어요</h3>
+              <Link to="/" className="btn-primary">상품 보러가기</Link>
+            </div>
+          )}
+          <div className="orders">
+            {orders?.map(o => (
+              <article key={o.id} className="order">
+                <div className="order-head">
+                  <span className={`status s-${o.status.toLowerCase()}`}>
+                    {o.status === 'PAYING' && <span className="ring-dot" aria-hidden="true" />}
+                    {STATUS_LABEL[o.status]}
+                  </span>
+                  <span className="muted order-date">{new Date(o.createdAt).toLocaleString('ko-KR')}</span>
+                </div>
+                <ul className="order-items">
+                  {o.items.map(i => (
+                    <li key={i.productId}>
+                      <Link to={`/products/${i.productId}`}>{i.productName}</Link> <span className="order-qty">× {i.quantity}</span> <span className="muted">({won(i.unitPrice)})</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="order-foot">
+                  <span className="muted order-no">주문번호 {o.orderNo}</span>
+                  <strong className="order-total">{won(o.totalAmount)}</strong>
+                </div>
+                {o.status === 'PENDING_PAYMENT' && (
+                  <div className="order-note info">
+                    <p>10분 안에 결제하면 주문이 확정돼요 · <Countdown until={o.expiresAt} /></p>
+                    <button className="order-pay" onClick={() => pay(o)} disabled={paying === o.id} aria-busy={paying === o.id}>{paying === o.id ? '결제 중…' : '결제하기'}</button>
+                  </div>
+                )}
+                {o.status === 'PAYING' && (
+                  <div className="order-note unc" role="status">
+                    <span className="ring-dot" aria-hidden="true" />
+                    <p>결제 결과를 확인하고 있어요. 잠시만 기다려주세요.</p>
+                  </div>
+                )}
+                {o.status === 'EXPIRED' && <div className="order-note neutral"><p>결제 기한이 지나 주문이 자동 취소되었어요.</p></div>}
+                {o.status === 'CANCELLED' && <div className="order-note neutral"><p>취소된 주문이에요. 결제하셨다면 환불이 진행됩니다.</p></div>}
+              </article>
+            ))}
+          </div>
+        </section>
 
-      <section className="me-section">
-        <h3>최근 검색어</h3>
-        {activity?.recentSearches.length === 0 && <p className="muted">최근 검색한 기록이 없어요.</p>}
-        <div className="parsed">
-          {activity?.recentSearches.map(q => <Link key={q} to={`/?q=${encodeURIComponent(q)}`} className="chip">{q}</Link>)}
-        </div>
-      </section>
+        <aside className="me-aside">
+          <section className="me-section">
+            <h2 className="me-h">최근 검색어</h2>
+            {activity?.recentSearches.length === 0 && <p className="muted">최근 검색한 기록이 없어요.</p>}
+            <div className="parsed">
+              {activity?.recentSearches.map(q => <Link key={q} to={`/?q=${encodeURIComponent(q)}`} className="chip">{q}</Link>)}
+            </div>
+          </section>
 
-      <section className="me-section">
-        <h3>최근 본 상품</h3>
-        {activity?.recentlyViewed.length === 0 && <p className="muted">최근 본 상품이 없어요.</p>}
-        <div className="grid">{activity?.recentlyViewed.map(p => <ProductCard key={p.id} product={p} />)}</div>
-      </section>
+          <section className="me-section">
+            <h2 className="me-h">최근 본 상품</h2>
+            {activity?.recentlyViewed.length === 0 && <p className="muted">최근 본 상품이 없어요.</p>}
+            <div className="grid me-viewed">{activity?.recentlyViewed.map(p => <ProductCard key={p.id} product={p} />)}</div>
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }
