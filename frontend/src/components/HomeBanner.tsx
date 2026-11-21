@@ -97,13 +97,15 @@ export function HomeBanner({ slides }: { slides: Slide[] }) {
                     <span className="hero-eyebrow">{s.label}</span>
                     <h2><Link to={`/products/${p.id}`}>{p.name}</Link></h2>
                     <p className="banner-meta">{p.categoryLabel} · {p.subCategoryLabel}</p>
-                    <div className="banner-price">
-                      {p.discountRate > 0 && <span className="banner-discount">{p.discountRate}%</span>}
-                      <strong>{won(p.price)}</strong>
-                      {p.originalPrice != null && p.discountRate > 0 && <s>{won(p.originalPrice)}</s>}
+                    <div className="banner-buy">
+                      <div className="banner-price">
+                        {p.discountRate > 0 && <span className="banner-discount">{p.discountRate}%</span>}
+                        <strong>{won(p.price)}</strong>
+                        {p.originalPrice != null && p.discountRate > 0 && <s>{won(p.originalPrice)}</s>}
+                      </div>
+                      {p.stock <= LOW_STOCK_THRESHOLD && <span className="banner-stock">{p.stock}개 남음</span>}
+                      <Link to={`/products/${p.id}`} className="btn-primary banner-cta" tabIndex={-1} aria-hidden="true">바로 보기</Link>
                     </div>
-                    {p.stock <= LOW_STOCK_THRESHOLD && <span className="banner-stock">{p.stock}개 남음</span>}
-                    <Link to={`/products/${p.id}`} className="btn-primary banner-cta" tabIndex={-1} aria-hidden="true">바로 보기</Link>
                   </div>
                   <div className="banner-media"><ProductImage src={p.thumbnail} alt="" category={p.category} /></div>
                 </div>
