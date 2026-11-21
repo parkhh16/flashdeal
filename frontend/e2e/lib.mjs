@@ -16,6 +16,8 @@ export const SCHEMES = ['light', 'dark']
 export const SCREENS = [
   { name: 'shop', path: '/', role: null },
   { name: 'product', path: '/products/1', role: null },
+  { name: 'product-low', path: '/products/2', role: null }, // npm run states 로 재고 4개 상태를 만든 뒤에 의미가 있다
+  { name: 'product-soldout', path: '/products/4', role: null }, // 재고 0 (품절)
   { name: 'login', path: '/login', role: null },
   { name: 'signup', path: '/signup', role: null },
   { name: 'me', path: '/me', role: 'user' },
