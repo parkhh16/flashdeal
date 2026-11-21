@@ -16,11 +16,13 @@
   --accent-weak: #fff1e8;
   --focus: var(--accent);
   /* 히어로 / 품절 스크림 */
-  --hero-bg: #1a1612;
-  --hero-fg: #fbf7f1;
-  --hero-muted: #cfc6b8;
-  --hero-accent: #ffb27a;
-  --hero-chip: rgb(255 255 255 / .12);
+  --hero-bg: #fff1e8;
+  --hero-fg: #16130f;
+  --hero-muted: #5c554b;
+  --hero-accent: #9a3412;
+  --hero-chip: rgb(22 19 15 / .07);
+  --hero-chip-hover: rgb(22 19 15 / .12);
+  --hero-border: #f3d9c7;
   --scrim: rgb(22 19 15 / .72);
   --on-scrim: #ffffff;
   /* 비활성 / 단색 칩 */
@@ -82,7 +84,12 @@
     --accent-text: #ffa05c;
     --accent-weak: #3a2414;
     --hero-bg: #2a1b10;
+    --hero-fg: #fbf7f1;
     --hero-muted: #d6c9b8;
+    --hero-accent: #ffb27a;
+    --hero-chip: rgb(255 255 255 / .12);
+    --hero-chip-hover: rgb(255 255 255 / .2);
+    --hero-border: transparent;
     --disabled-bg: #2a2f39;
     --disabled-fg: #98a1af;
     --soldout-bg: #4a525c;
@@ -112,7 +119,12 @@
   --accent-text: #ffa05c;
   --accent-weak: #3a2414;
   --hero-bg: #2a1b10;
+  --hero-fg: #fbf7f1;
   --hero-muted: #d6c9b8;
+  --hero-accent: #ffb27a;
+  --hero-chip: rgb(255 255 255 / .12);
+  --hero-chip-hover: rgb(255 255 255 / .2);
+  --hero-border: transparent;
   --disabled-bg: #2a2f39;
   --disabled-fg: #98a1af;
   --soldout-bg: #4a525c;
@@ -211,8 +223,9 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-siz
 .hero p { margin: 0; max-width: 520px; font-size: var(--fs-md); color: var(--hero-muted); }
 .hero-examples { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
 .hero-examples a { display: inline-flex; align-items: center; height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--hero-chip); color: var(--hero-fg); font-size: var(--fs-sm); font-weight: var(--fw-medium); white-space: nowrap; transition: background var(--dur-1) var(--ease); }
-.hero-examples a:hover { background: rgb(255 255 255 / .2); }
+.hero-examples a:hover { background: var(--hero-chip-hover); }
 .hero a:focus-visible { outline-color: var(--hero-accent); }
+.hero { border: 1px solid var(--hero-border); }
 
 .cat-nav { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-5); }
 .cat-rail, .sub-rail { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; padding: 4px; margin: -4px; }
