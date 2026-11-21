@@ -196,14 +196,14 @@ export function ShopPage() {
 
   return (
     <div className="shop">
-      {isHome && (!bannerReady
-        ? <BannerSkeleton />
-        : showBanner ? <HomeBanner slides={slides} /> : <Hero />)}
-      {isHome && showBanner && <ExampleChips className="example-row" label="이렇게 검색해 보세요" />}
-      {/* PC: 왼쪽 세로 카테고리 트리, 오른쪽 목록. 1023px 이하는 CSS가 트리를 숨기고 아래 가로 레일을 보여 준다 */}
+      {/* PC: 왼쪽 세로 카테고리 트리, 오른쪽에 배너와 목록. 1023px 이하는 CSS가 트리를 숨기고 가로 레일을 보여 준다 */}
       <div className="shop-layout">
         <Sidebar tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
         <div className="shop-main">
+          {isHome && (!bannerReady
+            ? <BannerSkeleton />
+            : showBanner ? <HomeBanner slides={slides} /> : <Hero />)}
+          {isHome && showBanner && <ExampleChips className="example-row" label="이렇게 검색해 보세요" />}
           {!isHome && head}
           <CategoryRail tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
 
