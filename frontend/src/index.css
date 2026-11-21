@@ -523,3 +523,8 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
   /* 사이드바가 있으면 같은 내용을 가로 레일로 한 번 더 보여 주지 않는다 */
   .cat-nav { display: none; }
 }
+
+/* ── 헤더: 반투명 + 흐림 (스크롤하면 아래 내용이 비친다). 지원하지 않는 브라우저는 위의 불투명 배경을 그대로 쓴다 ── */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .header { background: color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px); }
+}
