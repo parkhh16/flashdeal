@@ -70,6 +70,19 @@ export function LogoMark() {
   )
 }
 
+export const ChevronLeftIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}><path d="m15 6-6 6 6 6" /></Icon>
+)
+export const ChevronRightIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}><path d="m9 6 6 6-6 6" /></Icon>
+)
+export const PauseIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}><path d="M9 6.5v11M15 6.5v11" /></Icon>
+)
+export const PlayIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}><path d="M8.5 6v12L18 12 8.5 6Z" /></Icon>
+)
+
 export const ChevronDownIcon = ({ className }: { className?: string }) => (
   <Icon className={className}><path d="m6 9 6 6 6-6" /></Icon>
 )

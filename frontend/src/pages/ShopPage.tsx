@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, type AiSearchResult, type CategoryTree, type Product, type SortKey } from '../api'
 import { CategoryRail } from '../components/CategoryRail'
+import { buildSlides } from '../bannerSlides'
+import { BannerSkeleton, HomeBanner } from '../components/HomeBanner'
 import { Sidebar } from '../components/Sidebar'
 import { EmptySearchIcon } from '../components/icons'
 import { ProductCard } from '../components/ProductCard'
@@ -45,7 +47,7 @@ function ExampleChips({ className, label }: { className: string; label?: string 
   )
 }
 
-/** 홈 히어로. 정적이고 상품 데이터에 의존하지 않는다 (목록이 로딩 중이거나 실패해도 그대로 보인다) */
+/** 정적 히어로. 상품 목록이 실패했거나 올릴 상품이 없을 때 배너 대신 보인다 (상품 데이터에 의존하지 않는다) */
 function Hero() {
   return (
     <section className="hero" aria-labelledby="hero-title">
@@ -118,6 +120,10 @@ export function ShopPage() {
       : []),
     [isHome, products])
 
+  // 홈 배너에 올릴 상품. 목록이 로딩 중이거나 실패했거나 올릴 상품이 없으면 아래에서 정적 히어로로 바꾼다
+  const slides = useMemo(() => (isHome && products ? buildSlides(products) : []), [isHome, products])
+  const showBanner = slides.length > 0 && !listFailed
+
   const catNode = tree?.categories.find(c => c.code === category)
   const subNode = catNode?.children.find(s => s.code === sub)
   const title = q ? `"${ai?.originalQuery ? ai.query : q}" 검색 결과` : subNode ? subNode.label : catNode ? catNode.label : '전체 상품'
@@ -185,7 +191,10 @@ export function ShopPage() {
 
   return (
     <div className="shop">
-      {isHome && <Hero />}
+      {isHome && (products === null
+        ? <BannerSkeleton />
+        : showBanner ? <HomeBanner slides={slides} /> : <Hero />)}
+      {isHome && showBanner && <ExampleChips className="example-row" label="이렇게 검색해 보세요" />}
       {/* PC: 왼쪽 세로 카테고리 트리, 오른쪽 목록. 1023px 이하는 CSS가 트리를 숨기고 아래 가로 레일을 보여 준다 */}
       <div className="shop-layout">
         <Sidebar tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />

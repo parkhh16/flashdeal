@@ -112,9 +112,66 @@ if (!target) throw new Error('주문 가능한 상품이 없다')
   await page.route('**/api/categories**', r => r.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
   await page.goto(`${BASE}/`); await settle(page)
   check('카테고리 500: 헤더 보임', await page.locator('header.header').isVisible())
-  check('카테고리 500: 히어로 보임', await page.locator('section.hero').isVisible())
+  check('카테고리 500: 홈 배너(또는 히어로) 보임', await page.locator('section.banner, section.hero').first().isVisible())
   check('카테고리 500: 상품 그리드 보임', (await page.locator('.grid a[href^="/products/"]').count()) > 0)
   await ctx.close()
+}
+
+// 3-c2) 상품 목록 API가 500이면 배너 대신 정적 히어로가 보이고 헤더는 정상 (배너가 상품 데이터에 의존해도 홈이 무너지지 않는다)
+{
+  const ctx = await browser.newContext({ viewport: VIEWPORTS.pc })
+  const page = await ctx.newPage()
+  // 목록(/api/products)만 500으로 만든다. 상세(/api/products/:id)와 검색(/api/products/search)은 경로가 달라 영향이 없다
+  await page.route(url => url.pathname === '/api/products', r => r.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
+  await page.goto(`${BASE}/`); await settle(page)
+  check('상품 목록 500: 헤더 보임', await page.locator('header.header').isVisible())
+  check('상품 목록 500: 정적 히어로로 대체', await page.locator('section.hero').isVisible() && (await page.locator('section.banner').count()) === 0)
+  await ctx.close()
+}
+
+// 3-c3) 홈 배너: 5초마다 넘어가고, 멈춤 버튼·마우스 올림·"동작 줄이기"가 자동 넘김을 멈춘다 (가짜 시계로 기다림 없이)
+{
+  const slideIndex = page => page.evaluate(() => [...document.querySelectorAll('.banner-dot')].findIndex(d => d.getAttribute('aria-current') === 'true'))
+  const open = async (opts = {}) => {
+    const ctx = await browser.newContext({ viewport: VIEWPORTS.pc, ...opts })
+    const page = await ctx.newPage()
+    await page.clock.install()
+    await page.goto(`${BASE}/`); await settle(page)
+    return { ctx, page }
+  }
+  {
+    const { ctx, page } = await open()
+    const n = await page.locator('.banner-slide').count()
+    check('홈 배너: 슬라이드 2장 이상', n >= 2, `${n}장`)
+    check('홈 배너: 화면 밖 슬라이드는 inert (키보드가 못 감)', (await page.locator('.banner-slide[inert]').count()) === n - 1)
+    check('홈 배너: 처음엔 1번째', (await slideIndex(page)) === 0)
+    await page.clock.fastForward(5200)
+    check('홈 배너: 5초 뒤 2번째로 넘어감', (await slideIndex(page)) === 1)
+    await page.getByRole('button', { name: '자동 넘김 멈춤' }).click()
+    await page.mouse.move(0, 0)
+    await page.clock.fastForward(12000)
+    check('홈 배너: 멈춤 버튼을 누르면 더 넘어가지 않음', (await slideIndex(page)) === 1)
+    check('홈 배너: 멈춤 버튼이 "재생"으로 바뀜', (await page.getByRole('button', { name: '자동 넘김 재생' }).count()) === 1)
+    await page.getByRole('button', { name: '자동 넘김 재생' }).click()
+    await page.mouse.move(0, 0)
+    await page.clock.fastForward(5200)
+    check('홈 배너: 재생하면 다시 넘어감', (await slideIndex(page)) !== 1)
+    await page.getByRole('button', { name: '다음 슬라이드' }).click()
+    const afterNext = await slideIndex(page)
+    await page.getByRole('button', { name: '이전 슬라이드' }).click()
+    check('홈 배너: 이전·다음 버튼', (await slideIndex(page)) === ((afterNext - 1 + n) % n))
+    await page.locator('.banner-viewport').hover()
+    const before = await slideIndex(page)
+    await page.clock.fastForward(12000)
+    check('홈 배너: 마우스를 올리면 넘어가지 않음', (await slideIndex(page)) === before)
+    await ctx.close()
+  }
+  {
+    const { ctx, page } = await open({ reducedMotion: 'reduce' })
+    await page.clock.fastForward(12000)
+    check('홈 배너: "동작 줄이기"면 자동으로 넘어가지 않음', (await slideIndex(page)) === 0)
+    await ctx.close()
+  }
 }
 
 // 3-d) 재고 부족/품절 표시

@@ -541,3 +541,53 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .header { background: color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px); }
 }
+
+/* ── 홈 배너 (실제 상품 캐러셀). 배경은 화면 끝까지, 내용은 본문 폭에 맞춘다 ── */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* 배경이 화면 끝까지 가려면 100vw를 쓰는데, 세로 스크롤바가 있으면 그만큼 넘치므로 .app이 가로로 넘친 부분을 잘라 낸다 */
+.app { overflow-x: clip; }
+.banner { position: relative; width: 100vw; margin: calc(-1 * var(--space-5)) 0 var(--space-5) calc(50% - 50vw); background: var(--hero-bg); color: var(--hero-fg); border-block: 1px solid var(--hero-border); }
+.banner-inner { max-width: 1440px; margin: 0 auto; padding: var(--space-6) var(--space-5) 72px; min-height: 380px; position: relative; }
+.banner-skeleton { min-height: 380px; }
+.banner-viewport { overflow: hidden; }
+.banner-track { display: flex; transition: transform var(--dur-3, 450ms) var(--ease, ease); }
+@media (prefers-reduced-motion: reduce) { .banner-track { transition: none; } }
+.banner-slide { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: var(--space-6); align-items: center; }
+.banner-text { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.banner-text h2 { margin: 0; font-size: var(--fs-hero); font-weight: var(--fw-black); letter-spacing: var(--ls-hero); line-height: 1.15; }
+.banner-text h2 a:hover { text-decoration: underline; }
+.banner-meta { margin: 0; color: var(--hero-muted); font-size: var(--fs-md); }
+.banner-price { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.banner-price strong { font-size: 28px; font-weight: var(--fw-black); font-variant-numeric: tabular-nums; }
+.banner-price s { color: var(--hero-muted); font-size: var(--fs-md); }
+.banner-discount { color: var(--hero-accent); font-size: 22px; font-weight: var(--fw-black); }
+.banner-stock { display: inline-flex; align-items: center; height: 28px; padding: 0 var(--space-3); border-radius: var(--radius-pill); background: var(--hero-chip); color: var(--hero-accent); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.banner-cta { margin-top: var(--space-2); }
+.banner-media { min-width: 0; }
+.banner-media .product-image { border-radius: var(--radius-xl); } /* 그림자는 두지 않는다: 이웃 슬라이드로 번져 가장자리에 띠가 보였다 */
+.banner-controls { position: absolute; left: var(--space-5); bottom: var(--space-5); display: flex; align-items: center; gap: var(--space-2); }
+.banner-btn { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--hero-chip); color: var(--hero-fg); border: 1px solid transparent; }
+.banner-btn:hover:not(:disabled) { background: var(--hero-chip-hover); border-color: transparent; }
+.banner-btn svg { width: 20px; height: 20px; }
+.banner-dots { display: flex; align-items: center; margin-left: var(--space-2); }
+.banner-dot { width: 24px; height: 40px; padding: 0; background: none; border: none; display: inline-flex; align-items: center; justify-content: center; }
+.banner-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--hero-chip-hover); transition: width var(--dur-2, 200ms) var(--ease, ease), background var(--dur-2, 200ms) var(--ease, ease); }
+.banner-dot:hover:not(:disabled) { background: none; }
+.banner-dot[aria-current="true"]::before { width: 22px; border-radius: 99px; background: var(--hero-fg); }
+.banner a:focus-visible, .banner button:focus-visible { outline-color: var(--hero-accent); }
+.example-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-5); }
+.example-row::before { content: attr(aria-label); flex: none; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); margin-right: var(--space-1); }
+.example-row a { display: inline-flex; align-items: center; height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--surface); border: 1px solid var(--border); font-size: var(--fs-sm); white-space: nowrap; }
+.example-row a:hover { background: var(--surface-2); }
+@media (max-width: 900px) {
+  .banner { margin-top: calc(-1 * var(--space-4)); }
+  .banner-inner { padding: var(--space-5) var(--space-4) 72px; min-height: 0; }
+  .banner-controls { left: var(--space-4); }
+  .banner-text h2 { font-size: 26px; }
+  .example-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+}
+@media (max-width: 700px) {
+  .banner-slide { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .banner-media { order: -1; }
+  .banner-media .product-image { aspect-ratio: 16 / 10; }
+}
