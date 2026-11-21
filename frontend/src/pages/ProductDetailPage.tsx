@@ -33,7 +33,7 @@ export function ProductDetailPage() {
 
   const images = product.images.length > 0 ? product.images : [null]
   const maxQty = Math.max(1, Math.min(product.stock, product.perUserLimit ?? 10, 10))
-  const soldOut = product.soldOut
+  const soldOut = product.soldOut || product.stock <= 0
   const blocked = soldOut
 
   const buttonLabel = !session ? '로그인하고 구매하기'

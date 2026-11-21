@@ -93,6 +93,7 @@ export function ShopPage() {
       api.aiSearch(q, !exact).then(({ data }) => {
         if (cancelled) return
         setAi(data)
+        setFailedQ(null)
         setProducts(data.products)
       }).catch(e => { if (!cancelled) { fail(e); setFailedQ(q); setProducts([]) } })
     } else {

@@ -86,7 +86,7 @@ export function MyActivityPage() {
                 {o.status === 'PENDING_PAYMENT' && (
                   <>
                     <Countdown until={o.expiresAt} />
-                    <button onClick={() => pay(o)} disabled={paying === o.id}>{paying === o.id ? '결제 중…' : '결제하기'}</button>
+                    <button onClick={() => pay(o)} disabled={paying === o.id} aria-busy={paying === o.id}>{paying === o.id ? '결제 중…' : '결제하기'}</button>
                   </>
                 )}
                 {o.status === 'PAYING' && <span className="muted">결제 결과를 확인하고 있어요. 잠시만 기다려주세요.</span>}
