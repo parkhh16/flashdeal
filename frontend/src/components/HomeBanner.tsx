@@ -30,6 +30,7 @@ function useTabHidden() {
 export function BannerSkeleton() {
   return (
     <section className="banner banner-skeleton" aria-busy="true" aria-label="추천 상품을 불러오는 중">
+      <h1 className="sr-only">니즈샵 추천 상품</h1>
       <div className="banner-inner" />
     </section>
   )
@@ -46,13 +47,15 @@ export function HomeBanner({ slides }: { slides: Slide[] }) {
   const n = slides.length
   const [index, setIndex] = useState(0)
   const [userPaused, setUserPaused] = useState(false)
-  const [engaged, setEngaged] = useState(false) // 마우스를 올렸거나 키보드 포커스가 안에 있음
+  // 마우스와 키보드 포커스를 따로 기억한다. 하나로 합치면 마우스가 나갈 때 포커스 보호까지 풀려, 포커스된 링크가 inert가 되어 사라진다
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
   const reduced = useReducedMotion()
   const tabHidden = useTabHidden()
   const touchX = useRef<number | null>(null)
 
   const current = n === 0 ? 0 : index % n
-  const playing = n > 1 && !userPaused && !engaged && !reduced && !tabHidden
+  const playing = n > 1 && !userPaused && !hovered && !focused && !reduced && !tabHidden
 
   // 슬라이드를 직접 넘기면 시간이 다시 시작한다 (current가 바뀌면 이 효과가 다시 걸린다)
   useEffect(() => {
@@ -73,13 +76,16 @@ export function HomeBanner({ slides }: { slides: Slide[] }) {
 
   return (
     <section className="banner" aria-roledescription="carousel" aria-label="추천 상품"
-             onMouseEnter={() => setEngaged(true)} onMouseLeave={() => setEngaged(false)}
-             onFocus={() => setEngaged(true)}
-             onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setEngaged(false) }}>
+             // 키보드로 들어온 포커스(:focus-visible)만 멈춤 조건이다. 마우스로 버튼을 눌러 생긴 포커스까지 치면 "재생"을 눌러도 안 움직인다
+             onFocus={e => setFocused(e.target.matches(':focus-visible'))}
+             onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false) }}>
       <h1 className="sr-only">니즈샵 추천 상품</h1>
       <div className="banner-inner">
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {!playing && n > 0 ? `${n}장 중 ${current + 1}번째: ${slides[current].label}, ${slides[current].product.name}` : ''}
+        </p>
         <div className="banner-viewport" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
-             aria-live={playing ? 'off' : 'polite'}>
+             onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
           <div className="banner-track" style={{ transform: `translateX(-${current * 100}%)` }}>
             {slides.map((s, i) => {
               const p = s.product
@@ -97,7 +103,7 @@ export function HomeBanner({ slides }: { slides: Slide[] }) {
                       {p.originalPrice != null && p.discountRate > 0 && <s>{won(p.originalPrice)}</s>}
                     </div>
                     {p.stock <= LOW_STOCK_THRESHOLD && <span className="banner-stock">{p.stock}개 남음</span>}
-                    <Link to={`/products/${p.id}`} className="btn-primary banner-cta">바로 보기</Link>
+                    <Link to={`/products/${p.id}`} className="btn-primary banner-cta" tabIndex={-1} aria-hidden="true">바로 보기</Link>
                   </div>
                   <div className="banner-media"><ProductImage src={p.thumbnail} alt="" category={p.category} /></div>
                 </div>
@@ -108,10 +114,12 @@ export function HomeBanner({ slides }: { slides: Slide[] }) {
         {n > 1 && (
           <div className="banner-controls">
             <button type="button" className="banner-btn" onClick={() => go(current - 1)} aria-label="이전 슬라이드"><ChevronLeftIcon /></button>
-            <button type="button" className="banner-btn" onClick={() => setUserPaused(p => !p)}
-                    aria-label={userPaused ? '자동 넘김 재생' : '자동 넘김 멈춤'} aria-pressed={userPaused}>
-              {userPaused || reduced ? <PlayIcon /> : <PauseIcon />}
-            </button>
+            {!reduced && (
+              <button type="button" className="banner-btn" onClick={() => setUserPaused(p => !p)}
+                      aria-label={userPaused ? '자동 넘김 재생' : '자동 넘김 멈춤'}>
+                {userPaused ? <PlayIcon /> : <PauseIcon />}
+              </button>
+            )}
             <button type="button" className="banner-btn" onClick={() => go(current + 1)} aria-label="다음 슬라이드"><ChevronRightIcon /></button>
             <div className="banner-dots">
               {slides.map((s, i) => (

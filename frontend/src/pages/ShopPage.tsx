@@ -68,6 +68,8 @@ export function ShopPage() {
   const [failedQ, setFailedQ] = useState<string | null>(null)
   const [treeFailed, setTreeFailed] = useState(false)
   const [listFailed, setListFailed] = useState(false)
+  // products가 어떤 조건으로 불러온 것인지. 검색에서 홈으로 돌아올 때 이전 검색 결과가 잠깐 홈 배너로 그려지는 것을 막는다
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
 
   const q = params.get('q')
   const searchFailed = !!q && failedQ === q
@@ -79,6 +81,7 @@ export function ShopPage() {
   const excludeSoldOut = params.get('soldout') === '0'
   const keyword = params.get('keyword') ?? undefined
   const exact = params.get('exact') === '1'
+  const listKey = JSON.stringify([q, exact, category, sub, sort, minPrice, maxPrice, excludeSoldOut, keyword])
 
   useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => setTreeFailed(true)) }, [])
 
@@ -92,15 +95,16 @@ export function ShopPage() {
         setAi(data)
         setFailedQ(null)
         setProducts(data.products)
-      }).catch(e => { if (!cancelled) { fail(e); setFailedQ(q); setProducts([]) } })
+        setLoadedKey(listKey)
+      }).catch(e => { if (!cancelled) { fail(e); setFailedQ(q); setProducts([]); setLoadedKey(listKey) } })
     } else {
       setAi(null)
       api.products({ category, sub, minPrice, maxPrice, excludeSoldOut, sort, keyword })
-        .then(({ data }) => { if (!cancelled) setProducts(data) })
-        .catch(e => { if (!cancelled) { fail(e); setListFailed(true); setProducts([]) } })
+        .then(({ data }) => { if (!cancelled) { setProducts(data); setLoadedKey(listKey) } })
+        .catch(e => { if (!cancelled) { fail(e); setListFailed(true); setProducts([]); setLoadedKey(listKey) } })
     }
     return () => { cancelled = true }
-  }, [q, exact, category, sub, sort, minPrice, maxPrice, excludeSoldOut, keyword])
+  }, [q, exact, category, sub, sort, minPrice, maxPrice, excludeSoldOut, keyword, listKey])
 
   const update = (patch: Record<string, string | undefined>) => {
     const next = new URLSearchParams(params)
@@ -121,7 +125,8 @@ export function ShopPage() {
     [isHome, products])
 
   // 홈 배너에 올릴 상품. 목록이 로딩 중이거나 실패했거나 올릴 상품이 없으면 아래에서 정적 히어로로 바꾼다
-  const slides = useMemo(() => (isHome && products ? buildSlides(products) : []), [isHome, products])
+  const bannerReady = products !== null && loadedKey === listKey
+  const slides = useMemo(() => (isHome && products && bannerReady ? buildSlides(products) : []), [isHome, products, bannerReady])
   const showBanner = slides.length > 0 && !listFailed
 
   const catNode = tree?.categories.find(c => c.code === category)
@@ -191,7 +196,7 @@ export function ShopPage() {
 
   return (
     <div className="shop">
-      {isHome && (products === null
+      {isHome && (!bannerReady
         ? <BannerSkeleton />
         : showBanner ? <HomeBanner slides={slides} /> : <Hero />)}
       {isHome && showBanner && <ExampleChips className="example-row" label="이렇게 검색해 보세요" />}

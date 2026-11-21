@@ -546,7 +546,7 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 /* 배경이 화면 끝까지 가려면 100vw를 쓰는데, 세로 스크롤바가 있으면 그만큼 넘치므로 .app이 가로로 넘친 부분을 잘라 낸다 */
 .app { overflow-x: clip; }
-.banner { position: relative; width: 100vw; margin: calc(-1 * var(--space-5)) 0 var(--space-5) calc(50% - 50vw); background: var(--hero-bg); color: var(--hero-fg); border-block: 1px solid var(--hero-border); }
+.banner { position: relative; width: 100vw; margin: -20px 0 var(--space-5) calc(50% - 50vw); background: var(--hero-bg); color: var(--hero-fg); border-block: 1px solid var(--hero-border); }
 .banner-inner { max-width: 1440px; margin: 0 auto; padding: var(--space-6) var(--space-5) 72px; min-height: 380px; position: relative; }
 .banner-skeleton { min-height: 380px; }
 .banner-viewport { overflow: hidden; }
