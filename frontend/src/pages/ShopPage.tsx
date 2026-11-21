@@ -51,7 +51,7 @@ function SearchBox({ current }: { current: string | null }) {
       <div className="search-field">
         <span className="search-icon" aria-hidden="true">🔍</span>
         <input value={value} onChange={e => setValue(e.target.value)} aria-label="상품 검색"
-               placeholder="찾는 상품을 말하듯이 입력해보세요 — 예: 5만원 이하 무선 마우스" />
+               placeholder="예: 5만원 이하 무선 마우스" />
         {value && <button type="button" className="clear" onClick={() => { setValue(''); navigate('/') }} aria-label="검색어 지우기">×</button>}
         <button type="submit">검색</button>
       </div>
@@ -71,8 +71,10 @@ export function ShopPage() {
   const [products, setProducts] = useState<Product[] | null>(null)
   const [ai, setAi] = useState<AiSearchResult | null>(null)
   const [tree, setTree] = useState<CategoryTree | null>(null)
+  const [failedQ, setFailedQ] = useState<string | null>(null)
 
   const q = params.get('q')
+  const searchFailed = !!q && failedQ === q
   const category = params.get('category') ?? undefined
   const sub = params.get('sub') ?? undefined
   const sort = (params.get('sort') as SortKey) || 'POPULAR'
@@ -92,7 +94,7 @@ export function ShopPage() {
         if (cancelled) return
         setAi(data)
         setProducts(data.products)
-      }).catch(e => { if (!cancelled) { fail(e); setProducts([]) } })
+      }).catch(e => { if (!cancelled) { fail(e); setFailedQ(q); setProducts([]) } })
     } else {
       setAi(null)
       api.products({ category, sub, minPrice, maxPrice, excludeSoldOut, sort, keyword })
@@ -222,10 +224,10 @@ export function ShopPage() {
       )}
       {visible && visible.length === 0 && (
         <div className="empty">
-          <p>조건에 맞는 상품이 없어요.</p>
-          {conditions.length > 0 && <p className="muted">위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?</p>}
+          <p>{searchFailed ? '검색에 실패했어요.' : '조건에 맞는 상품이 없어요.'}</p>
+          {!searchFailed && conditions.length > 0 && <p className="muted">위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?</p>}
           <div className="suggestions">
-            {SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
+            {!searchFailed && SUGGESTIONS.map(s => <Link key={s} to={`/?q=${encodeURIComponent(s)}`} className="chip">{s}</Link>)}
           </div>
           <Link to="/" className="ghost-link">전체 상품 보기</Link>
         </div>

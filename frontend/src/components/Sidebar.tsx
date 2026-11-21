@@ -6,6 +6,7 @@ import { CATEGORY_ICON } from '../format'
 /** 무신사식 카테고리 트리. 선택 상태는 URL 쿼리(category/sub)가 기준이다 */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tree, setTree] = useState<CategoryTree | null>(null)
+  const [treeFailed, setTreeFailed] = useState(false)
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const onShop = pathname === '/'
@@ -14,7 +15,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const searching = !!params.get('q')
   const [expanded, setExpanded] = useState<string | null>(category)
 
-  useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => setTree(null)) }, [])
+  useEffect(() => { api.categories().then(r => setTree(r.data)).catch(() => { setTree(null); setTreeFailed(true) }) }, [])
   useEffect(() => { if (category) setExpanded(category) }, [category])
 
   const isAll = onShop && !category && !sub && !searching
@@ -58,7 +59,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               </div>
             )
           })}
-          {!tree && <p className="muted pad">카테고리를 불러오는 중…</p>}
+          {!tree && !treeFailed && <p className="muted pad">카테고리를 불러오는 중…</p>}
         </nav>
       </aside>
     </>

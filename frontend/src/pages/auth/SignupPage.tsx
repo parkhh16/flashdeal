@@ -103,7 +103,7 @@ export function SignupPage() {
           {hint('email')}
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="auth-submit" disabled={submitting}>{submitting ? '가입 중…' : '가입하기'}</button>
+        <button type="submit" className="auth-submit" disabled={submitting} aria-busy={submitting}>{submitting ? '가입 중…' : '가입하기'}</button>
         <p className="auth-alt">이미 회원이신가요? <Link to={`/login${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}>로그인</Link></p>
       </form>
     </div>

@@ -53,7 +53,7 @@ export function LoginPage() {
           <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="auth-submit" disabled={submitting || !loginId || !password}>
+        <button type="submit" className="auth-submit" disabled={submitting || !loginId || !password} aria-busy={submitting}>
           {submitting ? '로그인 중…' : '로그인'}
         </button>
         <p className="auth-alt">아직 회원이 아니신가요? <Link to={`/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}>회원가입</Link></p>

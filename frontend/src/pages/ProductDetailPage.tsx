@@ -4,7 +4,7 @@ import { api, ApiError, type ProductDetail } from '../api'
 import { ProductCard } from '../components/ProductCard'
 import { ProductImage } from '../components/ProductImage'
 import { useApp } from '../context/AppContext'
-import { won } from '../format'
+import { LOW_STOCK_THRESHOLD, won } from '../format'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -68,7 +68,7 @@ export function ProductDetailPage() {
 
       <div className="detail">
         <div className="gallery">
-          <ProductImage src={images[imageIndex]} alt={`${product.name} 이미지 ${imageIndex + 1}`} category={product.category} eager />
+          <ProductImage src={images[imageIndex]} alt={`${product.name} 이미지 ${imageIndex + 1}`} category={product.category} categoryLabel={product.categoryLabel} eager />
           {images.length > 1 && (
             <div className="thumbs">
               {images.map((src, i) => (
@@ -93,11 +93,18 @@ export function ProductDetailPage() {
             </div>
           </div>
 
+          <p className="stock-line">
+            {soldOut ? <span className="soldout-chip">품절</span>
+              : product.stock <= LOW_STOCK_THRESHOLD ? <span className="left-chip">{product.stock}개 남음</span>
+                : `재고 ${product.stock}개`}
+          </p>
+
           <dl className="facts">
-            <dt>재고</dt><dd>{soldOut ? '품절' : `${product.stock}개 남음`}</dd>
             {product.perUserLimit && <><dt>구매 제한</dt><dd>1인 {product.perUserLimit}개</dd></>}
             <dt>배송</dt><dd>무료배송 · 결제 후 1~2일 내 출고</dd>
           </dl>
+
+          {product.perUserLimit && <p className="limit-chip">1인 {product.perUserLimit}개까지</p>}
 
           <div className="qty-row">
             <span>수량</span>
@@ -110,7 +117,7 @@ export function ProductDetailPage() {
           </div>
 
           {session
-            ? <button className="buy" onClick={buy} disabled={blocked || ordering}>{buttonLabel}</button>
+            ? <button className="buy" onClick={buy} disabled={blocked || ordering} aria-busy={ordering}>{buttonLabel}</button>
             : <button className="buy" onClick={() => navigate(`/login?next=${encodeURIComponent(`/products/${product.id}`)}`)}>{buttonLabel}</button>}
           {!session && <p className="muted center">로그인하면 이 페이지로 다시 돌아와요.</p>}
         </div>
