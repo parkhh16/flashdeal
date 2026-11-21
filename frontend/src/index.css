@@ -501,3 +501,25 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
   .order-note.info { flex-direction: column; align-items: stretch; }
   .order-pay { min-height: 48px; width: 100%; }
 }
+
+/* ── 카테고리 사이드바 (PC 1024px 이상). 1023px 이하는 가로 레일(.cat-nav)을 쓴다 ── */
+.shop-layout { display: block; }
+.sidebar { display: none; }
+.sidebar-title { margin: 0 0 var(--space-3); padding: 0 var(--space-3); font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--muted); }
+.sidebar ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.side-link { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); color: var(--text); font-size: var(--fs-base); }
+.side-link svg { width: 20px; height: 20px; flex: none; color: var(--muted); }
+.side-link .count, .side-sublink .count { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.side-link:hover, .side-sublink:hover { background: var(--surface-2); }
+.side-link[aria-current="page"], .side-sublink[aria-current="page"] { background: var(--accent-weak); color: var(--accent-text); font-weight: var(--fw-semibold); }
+.side-link[aria-current="page"] svg { color: var(--accent-text); }
+.side-sub { padding: 2px 0 var(--space-2) calc(var(--space-3) + 20px + var(--space-3)) !important; }
+.side-sublink { display: flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--muted); font-size: var(--fs-sm); }
+.side-sublink.zero { opacity: .6; }
+.side-sk { height: 44px; border-radius: var(--radius); background: var(--surface-2); }
+@media (min-width: 1024px) {
+  .shop-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-7); align-items: start; }
+  .sidebar { display: block; position: sticky; top: calc(var(--header-h) + var(--space-4)); max-height: calc(100vh - var(--header-h) - var(--space-6)); overflow-y: auto; scrollbar-width: thin; }
+  /* 사이드바가 있으면 같은 내용을 가로 레일로 한 번 더 보여 주지 않는다 */
+  .cat-nav { display: none; }
+}

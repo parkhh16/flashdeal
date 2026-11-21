@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, type AiSearchResult, type CategoryTree, type Product, type SortKey } from '../api'
 import { CategoryRail } from '../components/CategoryRail'
+import { Sidebar } from '../components/Sidebar'
 import { EmptySearchIcon } from '../components/icons'
 import { ProductCard } from '../components/ProductCard'
 import { useApp } from '../context/AppContext'
@@ -185,87 +186,93 @@ export function ShopPage() {
   return (
     <div className="shop">
       {isHome && <Hero />}
-      {!isHome && head}
-      <CategoryRail tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
+      {/* PC: 왼쪽 세로 카테고리 트리, 오른쪽 목록. 1023px 이하는 CSS가 트리를 숨기고 아래 가로 레일을 보여 준다 */}
+      <div className="shop-layout">
+        <Sidebar tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
+        <div className="shop-main">
+          {!isHome && head}
+          <CategoryRail tree={tree} failed={treeFailed} category={category} sub={sub} searching={!!q} />
 
-      {lowStock.length > 0 && (
-        <section className="low-stock" aria-labelledby="low-stock-title">
-          <h2 id="low-stock-title">남은 수량이 적은 상품</h2>
-          <p className="muted">수량이 소진되면 판매가 끝나요</p>
-          <div className="rail-cards">{lowStock.map(p => <ProductCard key={p.id} product={p} />)}</div>
-        </section>
-      )}
-      {isHome && head}
-
-      {(ai || conditions.length > 0) && (
-        <div className="parsed">
-          <span className="muted">{ai ? '이렇게 이해했어요' : '적용된 조건'}</span>
-          {conditions.map(c => (
-            <span key={c.key} className="chip removable">
-              {c.label}
-              <button onClick={c.remove} aria-label={`${c.label} 조건 빼고 다시 검색`}>×</button>
-            </span>
-          ))}
-          {ai?.filter.excludes?.map(e => <span key={`ex-${e}`} className="chip static">"{e}" 제외</span>)}
-          {ai && conditions.length === 0 && <span className="chip static">가격·카테고리 조건 없음</span>}
-          {conditions.length > 1 && <Link to="/" className="muted clear-link">모두 지우기</Link>}
-        </div>
-      )}
-
-      <div className="toolbar">
-        <div className="sort-tabs" role="tablist" aria-label="정렬">
-          {SORTS.map(s => (
-            <button key={s.key} role="tab" aria-selected={sort === s.key} className={sort === s.key ? 'active' : ''}
-                    onClick={() => update({ sort: s.key === 'POPULAR' ? undefined : s.key })}>{s.label}</button>
-          ))}
-        </div>
-        <div className="filters">
-          {!q && (
-            <select aria-label="가격대" value={activePreset < 0 ? 0 : activePreset}
-                    onChange={e => {
-                      const p = PRICE_PRESETS[Number(e.target.value)]
-                      update({ min: p.min?.toString(), max: p.max?.toString() })
-                    }}>
-              {PRICE_PRESETS.map((p, i) => <option key={p.label} value={i}>{p.label}</option>)}
-            </select>
+          {lowStock.length > 0 && (
+            <section className="low-stock" aria-labelledby="low-stock-title">
+              <h2 id="low-stock-title">남은 수량이 적은 상품</h2>
+              <p className="muted">수량이 소진되면 판매가 끝나요</p>
+              <div className="rail-cards">{lowStock.map(p => <ProductCard key={p.id} product={p} />)}</div>
+            </section>
           )}
-          <label className="check">
-            <input type="checkbox" checked={excludeSoldOut} onChange={e => update({ soldout: e.target.checked ? '0' : undefined })} />
-            품절 제외
-          </label>
+          {isHome && head}
+
+          {(ai || conditions.length > 0) && (
+            <div className="parsed">
+              <span className="muted">{ai ? '이렇게 이해했어요' : '적용된 조건'}</span>
+              {conditions.map(c => (
+                <span key={c.key} className="chip removable">
+                  {c.label}
+                  <button onClick={c.remove} aria-label={`${c.label} 조건 빼고 다시 검색`}>×</button>
+                </span>
+              ))}
+              {ai?.filter.excludes?.map(e => <span key={`ex-${e}`} className="chip static">"{e}" 제외</span>)}
+              {ai && conditions.length === 0 && <span className="chip static">가격·카테고리 조건 없음</span>}
+              {conditions.length > 1 && <Link to="/" className="muted clear-link">모두 지우기</Link>}
+            </div>
+          )}
+
+          <div className="toolbar">
+            <div className="sort-tabs" role="tablist" aria-label="정렬">
+              {SORTS.map(s => (
+                <button key={s.key} role="tab" aria-selected={sort === s.key} className={sort === s.key ? 'active' : ''}
+                        onClick={() => update({ sort: s.key === 'POPULAR' ? undefined : s.key })}>{s.label}</button>
+              ))}
+            </div>
+            <div className="filters">
+              {!q && (
+                <select aria-label="가격대" value={activePreset < 0 ? 0 : activePreset}
+                        onChange={e => {
+                          const p = PRICE_PRESETS[Number(e.target.value)]
+                          update({ min: p.min?.toString(), max: p.max?.toString() })
+                        }}>
+                  {PRICE_PRESETS.map((p, i) => <option key={p.label} value={i}>{p.label}</option>)}
+                </select>
+              )}
+              <label className="check">
+                <input type="checkbox" checked={excludeSoldOut} onChange={e => update({ soldout: e.target.checked ? '0' : undefined })} />
+                품절 제외
+              </label>
+            </div>
+          </div>
+
+          {visible === null && (
+            <div className="grid" aria-busy="true" aria-label="상품을 불러오는 중">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="card skeleton" aria-hidden="true">
+                  <div className="sk-img" />
+                  <div className="card-body">
+                    <div className="sk-line sk-cat" />
+                    <div className="sk-name"><div className="sk-line" /><div className="sk-line short" /></div>
+                    <div className="sk-line sk-price" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {visible && visible.length === 0 && (
+            <div className="empty-state">
+              <EmptySearchIcon className="empty-icon" />
+              <h3>{listFailed ? '상품을 불러오지 못했어요' : searchFailed ? '검색에 실패했어요' : '조건에 맞는 상품이 없어요'}</h3>
+              {(listFailed || searchFailed)
+                ? <p className="muted">잠시 뒤 다시 시도하거나 전체 상품을 둘러보세요</p>
+                : <p className="muted">{conditions.length > 0 ? '위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?' : '다른 검색어로 찾아보세요. 이런 검색어는 어때요?'}</p>}
+              {!searchFailed && !listFailed && <ExampleChips className="empty-examples" />}
+              <Link to="/" className="btn-primary">전체 상품 보기</Link>
+            </div>
+          )}
+          {visible && visible.length > 0 && (
+            <div className="grid">
+              {visible.map((p, i) => <ProductCard key={p.id} product={p} featured={isHome && sort === 'POPULAR' && i === 0} />)}
+            </div>
+          )}
         </div>
       </div>
-
-      {visible === null && (
-        <div className="grid" aria-busy="true" aria-label="상품을 불러오는 중">
-          {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="card skeleton" aria-hidden="true">
-              <div className="sk-img" />
-              <div className="card-body">
-                <div className="sk-line sk-cat" />
-                <div className="sk-name"><div className="sk-line" /><div className="sk-line short" /></div>
-                <div className="sk-line sk-price" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {visible && visible.length === 0 && (
-        <div className="empty-state">
-          <EmptySearchIcon className="empty-icon" />
-          <h3>{listFailed ? '상품을 불러오지 못했어요' : searchFailed ? '검색에 실패했어요' : '조건에 맞는 상품이 없어요'}</h3>
-          {(listFailed || searchFailed)
-            ? <p className="muted">잠시 뒤 다시 시도하거나 전체 상품을 둘러보세요</p>
-            : <p className="muted">{conditions.length > 0 ? '위의 조건 칩을 하나씩 빼보거나, 이런 검색어는 어때요?' : '다른 검색어로 찾아보세요. 이런 검색어는 어때요?'}</p>}
-          {!searchFailed && !listFailed && <ExampleChips className="empty-examples" />}
-          <Link to="/" className="btn-primary">전체 상품 보기</Link>
-        </div>
-      )}
-      {visible && visible.length > 0 && (
-        <div className="grid">
-          {visible.map((p, i) => <ProductCard key={p.id} product={p} featured={isHome && sort === 'POPULAR' && i === 0} />)}
-        </div>
-      )}
     </div>
   )
 }
