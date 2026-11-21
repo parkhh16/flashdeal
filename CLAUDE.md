@@ -1,3 +1,5 @@
+@docs/LESSONS.md
+
 # 니즈샵
 
 재고가 한정된 상품에 주문이 몰려도 재고와 돈이 어긋나지 않는 쇼핑몰 주문·결제 시스템. 개인 포트폴리오 프로젝트이고, "문제 재현 → 원인 분석 → 해결 → 수치 확인"을 문서로 남기는 것이 목적이다.
@@ -36,6 +38,8 @@ cd ../frontend && npm ci && npm run build           # 프론트 타입 체크 + 
 - `coder`: 구현. 최소 변경만.
 - `reviewer`: 읽기 전용 리뷰. 주문, 재고, 결제, 인증을 바꾸면 반드시 거친다.
 - `tester`: 테스트 작성과 실행. 동시성 변경은 MySQL 검증까지.
+
+프론트(`frontend/`) UI 라운드는 `designer` → `frontend-coder` → `frontend-tester`·`frontend-reviewer`·`visual-reviewer` → `lessons-curator` 순서이고, 라운드 시작 전 `docs/LESSONS.md`의 규칙(에이전트 수·포그라운드·끝에 커밋 등)을 따른다.
 
 기본 흐름은 `coder` → `tester` → `reviewer`이고, reviewer가 지적하면 coder가 고친 뒤 tester를 다시 돌린다. 한 번에 한 가지 문제만 다룬다.
 
