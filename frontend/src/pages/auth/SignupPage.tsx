@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../../api'
+import { LogoMark } from '../../components/icons'
 import { useApp } from '../../context/AppContext'
 import { safeNext } from './LoginPage'
 
@@ -76,7 +77,11 @@ export function SignupPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={submit} noValidate>
-        <h2>회원가입</h2>
+        <div className="auth-top">
+          <LogoMark />
+          <h1>회원가입</h1>
+          <p className="muted">니즈샵 회원이 되어 보세요</p>
+        </div>
         <label>아이디
           <input autoFocus autoComplete="username" value={form.loginId} onChange={e => set('loginId', e.target.value)} onBlur={checkId}
                  aria-invalid={touched.loginId && !!errors.loginId} />

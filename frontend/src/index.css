@@ -311,18 +311,39 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-siz
 .ghost-link:hover { background: var(--surface-2); }
 
 /* ── orders ── */
-.orders { display: flex; flex-direction: column; gap: 12px; }
-.order { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-.order-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.order ul { margin: 8px 0; padding-left: 18px; }
-.order li a:hover { text-decoration: underline; }
-.order-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.status { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.orders { display: flex; flex-direction: column; gap: var(--space-3); }
+.order { display: flex; flex-direction: column; gap: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); }
+.order-head { display: flex; gap: var(--space-2) var(--space-3); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.order-date { margin-left: auto; }
+.order-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-base); font-weight: var(--fw-semibold); }
+.order-items a:hover { text-decoration: underline; }
+.order-items .muted, .order-qty { font-weight: var(--fw-regular); }
+.order-foot { display: flex; gap: var(--space-3); align-items: flex-end; justify-content: space-between; }
+.order-no { font-size: var(--fs-xs); word-break: break-all; min-width: 0; }
+.order-total { flex: none; font-size: 20px; font-weight: var(--fw-black); font-variant-numeric: tabular-nums; letter-spacing: var(--ls-tight); }
+.status { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; font-size: var(--fs-md); font-weight: var(--fw-semibold); padding: 0 var(--space-3); border-radius: var(--radius-pill); border: 1px solid transparent; }
 .s-pending_payment { background: var(--info-weak); color: var(--info); }
-.s-paying { background: var(--warn-weak); color: var(--warn); }
+.s-paying { background: var(--unc-weak); color: var(--unc); border: 1px dashed var(--unc); }
 .s-paid { background: var(--good-weak); color: var(--good); }
-.s-expired, .s-cancelled { background: var(--surface-2); color: var(--muted); }
-.countdown { font-variant-numeric: tabular-nums; color: var(--warn); font-size: 13px; font-weight: 600; }
+.s-expired, .s-cancelled { background: var(--neutral-weak); color: var(--neutral); }
+/* 속 빈 링 점: 확정 전(결제 확인 중) 표시 */
+.ring-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
+@media (prefers-reduced-motion: no-preference) { .ring-dot { animation: breathe 2s ease-in-out infinite; } }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+.order-note { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); }
+.order-note p { margin: 0; font-size: var(--fs-md); color: var(--muted); }
+.order-note.info { background: var(--info-weak); }
+.order-note.unc { justify-content: flex-start; background: var(--unc-weak); border: 1px dashed var(--unc); color: var(--unc); }
+.order-note.unc p { color: var(--text); }
+.order-note.neutral { background: var(--neutral-weak); }
+.order-note.info p { color: var(--text); }
+.order-pay { flex: none; min-height: 40px; padding: 0 var(--space-5); border-radius: var(--radius); }
+.countdown { font-variant-numeric: tabular-nums; }
+.skeleton-order .sk-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+.skeleton-order .sk-pill { width: 96px; height: 28px; border-radius: var(--radius-pill); }
+.skeleton-order .sk-wide { width: 70%; height: 18px; }
+.skeleton-order .short { width: 40%; }
+@media (prefers-reduced-motion: reduce) { .skeleton-order .sk-line { animation: none; } }
 
 /* ── admin ── */
 .admin { display: flex; flex-direction: column; gap: 16px; }
@@ -467,4 +488,11 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
   .related { display: flex; overflow-x: auto; scroll-snap-type: x proximity; gap: var(--space-3); margin: 0 calc(-1 * var(--space-4)); padding: 0 var(--space-4); }
   .related > .card { flex: 0 0 160px; scroll-snap-align: start; }
   body:has(.buy-bar) .toasts { bottom: calc(var(--bar-h) + 12px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 640px) {
+  .order { padding: var(--space-4); }
+  .order-date { margin-left: 0; flex-basis: 100%; }
+  .order-note.info { flex-direction: column; align-items: stretch; }
+  .order-pay { min-height: 48px; width: 100%; }
 }
