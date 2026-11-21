@@ -30,7 +30,7 @@ function HeaderSearch() {
   )
 }
 
-export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMenu?: boolean }) {
+export function Header() {
   const { session, logout, toast } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -57,7 +57,6 @@ export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMe
   return (
     <header className="header">
       <div className="header-inner">
-        {showMenu && <button className="icon-btn only-mobile" onClick={onMenu} aria-label="카테고리 열기">☰</button>}
         <Link to="/" className="brand"><LogoMark />니즈샵</Link>
         {!location.pathname.startsWith('/admin') && <HeaderSearch />}
         <nav className="header-nav">

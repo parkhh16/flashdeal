@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORY_ICON } from '../format'
+import { CategoryIcon } from './icons'
 
 interface Props {
   src: string | null | undefined
@@ -17,7 +17,7 @@ export function ProductImage({ src, alt, category, categoryLabel, className = ''
   if (!src || failed) {
     return (
       <div className={`product-image placeholder ${className}`} role="img" aria-label={alt}>
-        <span aria-hidden="true">{CATEGORY_ICON[category] ?? '📦'}</span>
+        <CategoryIcon code={category} className="ph-icon" />
         {categoryLabel && <span className="ph-label" aria-hidden="true">{categoryLabel}</span>}
       </div>
     )

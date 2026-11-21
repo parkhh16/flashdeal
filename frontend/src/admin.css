@@ -126,19 +126,9 @@ a.chip:hover { border-color: var(--accent); }
 .chip.removable button { background: none; border: none; color: inherit; padding: 0 6px; font-size: 15px; line-height: 1; border-radius: 99px; }
 .chip.removable button:hover { background: rgb(0 0 0 / .08); }
 .clear-link { text-decoration: underline; }
-.suggestions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 12px 0; }
 
-/* ── shop search box ── */
-.search-box { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-.search-field { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 4px 4px 4px 14px; }
-.search-field:focus-within { border: 2px solid var(--accent); padding: 3px 3px 3px 13px; }
-.search-icon { font-size: 16px; opacity: .6; }
-.search-field input { flex: 1; min-width: 0; border: none; background: none; padding: 10px 4px; font-size: 15px; }
-.search-field input:focus-visible { outline: none; }
-.search-field .clear { background: none; border: none; color: var(--muted); font-size: 20px; padding: 0 8px; }
-.search-field button[type="submit"] { border-radius: 9px; padding: 10px 20px; }
-.search-examples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.corrected { margin: -4px 0 12px; font-size: 14px; color: var(--muted); }
+/* ── shop notices ── */
+.corrected { margin: 0 0 var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--surface-2); font-size: 14px; color: var(--muted); }
 .corrected strong { color: var(--text); }
 .corrected a { color: var(--accent-text); text-decoration: underline; }
 
