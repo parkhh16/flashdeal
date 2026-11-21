@@ -18,7 +18,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/flashdeal
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/needs-shop
 
 jobs:
   images:
@@ -60,9 +60,9 @@ jobs:
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
           target="$DEPLOY_USER@$DEPLOY_HOST"
           # compose 파일과 스크립트만 올린다. 서버의 .env(비밀값)는 서버에만 있고 건드리지 않는다
-          ssh -i ~/.ssh/deploy_key "$target" "mkdir -p ~/flashdeal/deploy"
-          scp -i ~/.ssh/deploy_key deploy/docker-compose.yml deploy/smoke-test.sh "$target:~/flashdeal/deploy/"
-          ssh -i ~/.ssh/deploy_key "$target" "cd ~/flashdeal/deploy \
+          ssh -i ~/.ssh/deploy_key "$target" "mkdir -p ~/needs-shop/deploy"
+          scp -i ~/.ssh/deploy_key deploy/docker-compose.yml deploy/smoke-test.sh "$target:~/needs-shop/deploy/"
+          ssh -i ~/.ssh/deploy_key "$target" "cd ~/needs-shop/deploy \
             && export IMAGE_PREFIX=$IMAGE_PREFIX IMAGE_TAG=${{ github.sha }} \
             && docker compose pull app app2 web \
             && docker compose up -d --no-build --wait --wait-timeout 300"

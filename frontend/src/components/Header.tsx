@@ -30,7 +30,7 @@ export function Header({ onMenu, showMenu = true }: { onMenu: () => void; showMe
     <header className="header">
       <div className="header-inner">
         {showMenu && <button className="icon-btn only-mobile" onClick={onMenu} aria-label="카테고리 열기">☰</button>}
-        <Link to="/" className="brand"><span className="bolt">⚡</span>FlashDeal</Link>
+        <Link to="/" className="brand"><span className="bolt">⚡</span>니즈샵</Link>
         <nav className="header-nav">
           {session?.role === 'ADMIN' && <NavLink to="/admin">관리자</NavLink>}
           {session && <NavLink to="/me" end>내 활동</NavLink>}

@@ -6,7 +6,7 @@
 
 문제는 **환경변수를 하나 빠뜨려도 서버가 아무 일 없다는 듯 뜬다**는 점입니다. 실제로 점검해 보니 이미 하나가 빠져 있었습니다.
 
-> README와 가이드에는 "운영에서는 `ADMIN_PASSWORD`로 관리자 비밀번호를 바꾼다"고 적혀 있었지만, 코드는 `flashdeal.seed.admin-password` 속성을 읽고 있었고 `ADMIN_PASSWORD`는 어디에도 연결되어 있지 않았습니다. 이 환경변수를 설정해도 관리자는 `admin/admin` 그대로였습니다.
+> README와 가이드에는 "운영에서는 `ADMIN_PASSWORD`로 관리자 비밀번호를 바꾼다"고 적혀 있었지만, 코드는 `needsshop.seed.admin-password` 속성을 읽고 있었고 `ADMIN_PASSWORD`는 어디에도 연결되어 있지 않았습니다. 이 환경변수를 설정해도 관리자는 `admin/admin` 그대로였습니다.
 
 공개된 JWT 키로 뜬 서버는 누구나 관리자 토큰을 만들 수 있고, `admin/admin`이면 관리자 화면이 그대로 열립니다. 이런 서버가 "정상 동작"하는 것이 가장 위험합니다.
 
@@ -14,11 +14,11 @@
 
 ### 1. 연결 버그 수정과 회귀 테스트
 
-`application.yml`에서 `flashdeal.seed.admin-password: ${ADMIN_PASSWORD:admin}`으로 연결하고, 환경변수가 실제로 그 속성에 들어가는지 확인하는 테스트를 추가했습니다. 문서에 적힌 설정이 코드에서 동작하는지는 테스트로만 지킬 수 있습니다.
+`application.yml`에서 `needsshop.seed.admin-password: ${ADMIN_PASSWORD:admin}`으로 연결하고, 환경변수가 실제로 그 속성에 들어가는지 확인하는 테스트를 추가했습니다. 문서에 적힌 설정이 코드에서 동작하는지는 테스트로만 지킬 수 있습니다.
 
 ### 2. 운영 프로필은 안전하지 않으면 기동하지 않는다 (fail fast)
 
-`prod` 프로필이면 [`ProductionGuard`](../../backend/src/main/java/com/flashdeal/common/config/ProductionGuard.java)가 설정을 검사합니다. 하나라도 걸리면 이유를 모두 모아서 기동을 중단합니다.
+`prod` 프로필이면 [`ProductionGuard`](../../backend/src/main/java/com/needsshop/common/config/ProductionGuard.java)가 설정을 검사합니다. 하나라도 걸리면 이유를 모두 모아서 기동을 중단합니다.
 
 | 검사 | 막는 것 |
 |---|---|
@@ -56,7 +56,7 @@ prod 프로필 기동 중단 - 운영 설정이 안전하지 않습니다:
 
 ## 관련 코드
 
-- [`ProductionGuard`](../../backend/src/main/java/com/flashdeal/common/config/ProductionGuard.java), [`application.yml`](../../backend/src/main/resources/application.yml) (`prod` 프로필)
+- [`ProductionGuard`](../../backend/src/main/java/com/needsshop/common/config/ProductionGuard.java), [`application.yml`](../../backend/src/main/resources/application.yml) (`prod` 프로필)
 - [`deploy/docker-compose.yml`](../../deploy/docker-compose.yml), [`frontend/Caddyfile`](../../frontend/Caddyfile), [`backend/Dockerfile`](../../backend/Dockerfile)
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`server-env`), [`deploy.yml`](../../.github/workflows/deploy.yml)
 - 테스트: `ProductionGuardTest`

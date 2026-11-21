@@ -66,7 +66,7 @@
 | 무엇 | 어떻게 |
 |---|---|
 | 찾는 범위 | 이름·짧은 설명·**상세 설명·스펙·AI 태그**를 정규화해 합친 `search_text` 컬럼 (저장·수정할 때 만들고, 기존 상품은 마이그레이션 V7이 채움) |
-| 단어 매칭 ([`SearchText`](../../backend/src/main/java/com/flashdeal/product/SearchText.java)) | 단어별로 찾고, 띄어쓰기를 무시하고 포함("패드" ↔ "장패드"). 한글 세 글자 이상은 앞 두 글자로 시작하는 단어("가벼운" ↔ "가벼움"). 한 글자("눈")는 같은 단어만 |
+| 단어 매칭 ([`SearchText`](../../backend/src/main/java/com/needsshop/product/SearchText.java)) | 단어별로 찾고, 띄어쓰기를 무시하고 포함("패드" ↔ "장패드"). 한글 세 글자 이상은 앞 두 글자로 시작하는 단어("가벼운" ↔ "가벼움"). 한 글자("눈")는 같은 단어만 |
 | 검색 순서 | 단어가 모두 맞는 상품 → 오타 교정 → **가장 많은 단어가 맞는 상품** → 카테고리·가격만으로 완화. 응답의 `match`로 어느 단계 결과인지 화면에 알림 |
 | 상품 종류 | 여러 개면 맨 뒤가 중심("마우스 패드"는 패드). 좁은 종류("이어폰")는 결과에 꼭 있어야 하는 단어 |
 | 군더더기 | "때", "쓸", "안" 같은 한 글자 기능어는 키워드에서 뺌 |
@@ -98,7 +98,7 @@
 
 ### AI가 판단하고, 사실은 코드가 확인한다
 
-사람이 승인하는 단계는 없습니다. 대신 코드가 확인할 수 있는 사실과 어긋나면 뺍니다 ([`ProductTagger.check`](../../backend/src/main/java/com/flashdeal/ai/ProductTagger.java)).
+사람이 승인하는 단계는 없습니다. 대신 코드가 확인할 수 있는 사실과 어긋나면 뺍니다 ([`ProductTagger.check`](../../backend/src/main/java/com/needsshop/ai/ProductTagger.java)).
 
 시드 상품 25개에 Gemini가 제안한 **254개 중 120개**가 남았습니다 (2026-11-19).
 
@@ -200,13 +200,13 @@
 
 ## 관련 코드
 
-- [`AiSearchService`](../../backend/src/main/java/com/flashdeal/ai/AiSearchService.java): 검색 순서 (모두 맞음 → 오타 교정 → 가장 많이 맞음 → 완화)
-- [`RuleBasedQueryParser`](../../backend/src/main/java/com/flashdeal/ai/RuleBasedQueryParser.java): 가격, 상품 종류, 제외, 붙여 쓰기
-- [`SearchText`](../../backend/src/main/java/com/flashdeal/product/SearchText.java), [`ProductQueryService`](../../backend/src/main/java/com/flashdeal/product/ProductQueryService.java): 검색용 문자열, 단어 매칭
-- [`TypoCorrector`](../../backend/src/main/java/com/flashdeal/ai/TypoCorrector.java): 자모 편집 거리
-- [`GeminiClient`](../../backend/src/main/java/com/flashdeal/ai/GeminiClient.java): Gemini 호출, 응답 스키마
-- [`ProductTagger`](../../backend/src/main/java/com/flashdeal/ai/ProductTagger.java), [`ProductTagJob`](../../backend/src/main/java/com/flashdeal/ai/ProductTagJob.java): 태그 제안과 코드 검사, 백그라운드 작업
-- [`DemandService`](../../backend/src/main/java/com/flashdeal/ai/DemandService.java): 못 찾은 검색어 집계, AI 묶기, 사실 확인
+- [`AiSearchService`](../../backend/src/main/java/com/needsshop/ai/AiSearchService.java): 검색 순서 (모두 맞음 → 오타 교정 → 가장 많이 맞음 → 완화)
+- [`RuleBasedQueryParser`](../../backend/src/main/java/com/needsshop/ai/RuleBasedQueryParser.java): 가격, 상품 종류, 제외, 붙여 쓰기
+- [`SearchText`](../../backend/src/main/java/com/needsshop/product/SearchText.java), [`ProductQueryService`](../../backend/src/main/java/com/needsshop/product/ProductQueryService.java): 검색용 문자열, 단어 매칭
+- [`TypoCorrector`](../../backend/src/main/java/com/needsshop/ai/TypoCorrector.java): 자모 편집 거리
+- [`GeminiClient`](../../backend/src/main/java/com/needsshop/ai/GeminiClient.java): Gemini 호출, 응답 스키마
+- [`ProductTagger`](../../backend/src/main/java/com/needsshop/ai/ProductTagger.java), [`ProductTagJob`](../../backend/src/main/java/com/needsshop/ai/ProductTagJob.java): 태그 제안과 코드 검사, 백그라운드 작업
+- [`DemandService`](../../backend/src/main/java/com/needsshop/ai/DemandService.java): 못 찾은 검색어 집계, AI 묶기, 사실 확인
 - 마이그레이션: `V7__product_search_text`(검색용 컬럼), `V8__product_search_tags`(태그), `V9__demand_report`(등록 추천 결과)
 - 테스트: `RuleBasedQueryParserTest`, `SearchTextTest`, `WordSearchTest`, `TypoSearchTest`, `GeminiClientTest`, `ProductTaggerTest`, `ProductTagJobTest`, `DemandServiceTest`
 - 평가: `SearchQualityEvaluation` (`./gradlew searchEval -Plabel=이름`, 리포트는 `build/reports/search-eval/`)

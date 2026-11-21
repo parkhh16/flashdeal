@@ -27,14 +27,14 @@
 |---|---|---|
 | `web` | [`frontend/Dockerfile`](../frontend/Dockerfile) (React 빌드 + Caddy) | HTTPS, 정적 파일, `/api`를 두 앱 서버에 라운드 로빈. readiness가 DOWN이거나 연결이 안 되는 서버로는 보내지 않고, 그 서버로 간 요청은 다른 서버로 다시 보냄 ([`Caddyfile`](../frontend/Caddyfile)) |
 | `app`, `app2` | [`backend/Dockerfile`](../backend/Dockerfile) | 같은 이미지·설정. root가 아닌 사용자로 실행, 메모리 한도(`APP_MEMORY_LIMIT`)의 75%를 힙으로, readiness 헬스체크. `app2`는 `app`이 healthy가 된 뒤에 뜸 (빈 DB 첫 시드 경쟁 방지) |
-| `mysql` | `mysql:8.0` | 외부 포트를 열지 않음. 앱은 스키마 전용 계정(`flashdeal`)으로 접속 |
+| `mysql` | `mysql:8.0` | 외부 포트를 열지 않음. 앱은 스키마 전용 계정(`needs_shop`)으로 접속 |
 | `redis` | `redis:7-alpine` | 외부 포트를 열지 않음. 잃어도 되는 데이터(1분짜리 카운터, Pub/Sub 메시지)만 있어서 디스크에 쓰지 않음 |
 
 `actuator`와 `mock-pg`는 프록시하지 않아서 외부에서 보이지 않습니다. 앱 서버가 두 대일 때 무엇이 바뀌는지는 [#17](issues/13-scale-out.md)에 있습니다.
 
 ## 운영 프로필(prod)이 막는 것
 
-`SPRING_PROFILES_ACTIVE=prod`이면 [`ProductionGuard`](../backend/src/main/java/com/flashdeal/common/config/ProductionGuard.java)가 다른 빈이 만들어지기 전에 설정을 검사하고, 하나라도 걸리면 **서버가 뜨지 않습니다.**
+`SPRING_PROFILES_ACTIVE=prod`이면 [`ProductionGuard`](../backend/src/main/java/com/needsshop/common/config/ProductionGuard.java)가 다른 빈이 만들어지기 전에 설정을 검사하고, 하나라도 걸리면 **서버가 뜨지 않습니다.**
 
 | 검사 | 이유 |
 |---|---|
@@ -64,7 +64,7 @@ ADMIN_PASSWORD=<.env의 값> ./smoke-test.sh   # https://localhost 기준
 | 앱 한 대만 재시작 | `docker compose restart app2` (그동안 요청은 `app`이 받음) |
 | 내리기 (데이터 유지) | `docker compose down` |
 | 데이터까지 지우기 | `docker compose down -v` (DB와 발급받은 인증서가 모두 지워집니다) |
-| DB 백업 | `docker compose exec mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" flashdeal' > backup.sql` |
+| DB 백업 | `docker compose exec mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" needs_shop' > backup.sql` |
 
 - 로컬 PC에 MySQL이 이미 있어도 충돌하지 않습니다. 서버 환경의 MySQL은 포트를 열지 않습니다.
 - 80/443 포트가 이미 쓰이고 있으면 `.env`의 `HTTP_PORT`, `HTTPS_PORT`를 바꿉니다.
@@ -90,7 +90,7 @@ CI의 `server-env` 작업이 모든 PR과 `main` push에서 이 과정(이미지
 ### 방법 1: 서버에서 직접 빌드
 
 ```bash
-git clone https://github.com/parkhh16/flashdeal.git && cd flashdeal/deploy
+git clone https://github.com/parkhh16/needs-shop.git && cd needs-shop/deploy
 cp .env.example .env    # SITE_ADDRESS에 도메인
 docker compose up -d --build
 ./smoke-test.sh https://<도메인>
@@ -102,12 +102,12 @@ docker compose up -d --build
 
 [`deploy.yml`](../.github/workflows/deploy.yml)은 수동 실행 전용입니다 (Actions → Deploy → Run workflow).
 
-1. 앱·웹 이미지를 GHCR(`ghcr.io/<계정>/flashdeal-app`, `-web`)에 올립니다.
-2. 저장소 Secrets에 `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`가 있으면 SSH로 서버의 `~/flashdeal/deploy`에 compose 파일을 올리고 새 이미지로 교체합니다. 서버의 `.env`는 건드리지 않습니다.
+1. 앱·웹 이미지를 GHCR(`ghcr.io/<계정>/needs-shop-app`, `-web`)에 올립니다.
+2. 저장소 Secrets에 `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`가 있으면 SSH로 서버의 `~/needs-shop/deploy`에 compose 파일을 올리고 새 이미지로 교체합니다. 서버의 `.env`는 건드리지 않습니다.
 3. 입력한 주소가 있으면 GitHub 러너에서 그 주소로 스모크 테스트를 돌립니다.
 
 서버 준비:
-- `~/flashdeal/deploy/.env`를 미리 만들어 둡니다 (`IMAGE_PREFIX=ghcr.io/<계정>/flashdeal`, `IMAGE_TAG=latest`도 넣어 두면 서버에서 직접 `docker compose up -d`를 해도 같은 이미지를 씁니다).
+- `~/needs-shop/deploy/.env`를 미리 만들어 둡니다 (`IMAGE_PREFIX=ghcr.io/<계정>/needs-shop`, `IMAGE_TAG=latest`도 넣어 두면 서버에서 직접 `docker compose up -d`를 해도 같은 이미지를 씁니다).
 - GHCR 패키지가 비공개면 서버에서 한 번 `docker login ghcr.io`가 필요합니다 (`read:packages` 권한 토큰).
 
 Secrets가 없으면 이미지 푸시까지만 하고 끝납니다.

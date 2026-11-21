@@ -18,7 +18,7 @@ SPRING_PROFILES_ACTIVE=mysql DB_USER=root DB_PASSWORD=<비밀번호> ./gradlew b
 
 # jar로 실행
 ./gradlew bootJar
-java -jar build/libs/flashdeal-0.0.1.jar
+java -jar build/libs/needs-shop-0.0.1.jar
 
 # 프론트엔드: http://localhost:5173  (/api는 8080으로 프록시)
 cd frontend
@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-- MySQL 프로파일은 `flashdeal` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V9)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
+- MySQL 프로파일은 `needs_shop` 스키마가 없으면 만들고, Flyway 마이그레이션(V1~V9)을 적용하고, 회원 테이블이 비어 있을 때만 데모 데이터를 넣습니다.
 - `GEMINI_API_KEY`를 설정하면 새로 등록하거나 고친 상품에 AI 검색 태그가 붙고(1분 안팎), 관리자 "등록 추천"에서 못 찾은 검색어를 AI로 정리할 수 있습니다. 검색은 키가 없어도 똑같이 동작합니다 (검색할 때는 AI를 부르지 않음). 시드 상품의 태그는 미리 만들어 둔 파일에서 읽습니다. 키는 [Google AI Studio](https://aistudio.google.com)에서 무료로 발급받을 수 있고, 결제를 연결하지 않으면 무료 등급에 머뭅니다. 무료 등급에서는 보낸 내용(상품 정보, 못 찾은 검색어)이 Google 제품 개선에 쓰일 수 있으며, 회원 정보는 보내지 않습니다.
 - 여기까지가 **테스트 환경**(Docker 불필요)입니다. MySQL, 앱, HTTPS 프록시를 컨테이너로 함께 띄우는 **서버 환경**은 [서버 환경 가이드](deploy.md)에 있습니다 (`deploy/docker-compose.yml`).
 
@@ -57,7 +57,7 @@ npm run dev
 ```bash
 cd backend
 ./gradlew test                                          # 전체 135개, H2 (약 3분)
-DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 설치된 MySQL의 flashdeal_test 스키마에서
+DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트를 설치된 MySQL의 needs_shop_test 스키마에서
 ./gradlew test -Pdb=testcontainers                      # 같은 테스트를 Docker로 띄운 MySQL 8.0에서 (Docker 필요, CI와 같음)
 
 ./gradlew test --tests "*StockConcurrencyTest"          # 재고 전략별 동시성 비교표 출력
@@ -76,9 +76,9 @@ DB_PASSWORD=<비밀번호> ./gradlew test -Pdb=mysql         # 같은 테스트�
 cd ../frontend && npm run build                         # 타입 체크 + 빌드
 ```
 
-- 동시성 비교표는 `backend/build/test-results/test/TEST-com.flashdeal.order.StockConcurrencyTest.xml`의 system-out에 있습니다.
+- 동시성 비교표는 `backend/build/test-results/test/TEST-com.needsshop.order.StockConcurrencyTest.xml`의 system-out에 있습니다.
 - HTML 리포트: `backend/build/reports/tests/test/index.html`
-- `-Pdb=mysql`은 테스트 전용 스키마(`flashdeal_test`)를 쓰므로 앱 데이터와 섞이지 않습니다.
+- `-Pdb=mysql`은 테스트 전용 스키마(`needs_shop_test`)를 쓰므로 앱 데이터와 섞이지 않습니다.
 - `-Pdb=testcontainers`는 첫 연결 때 `mysql:8.0` 컨테이너를 띄워 테스트가 끝날 때까지 같이 쓰고, 끝나면 지웁니다. MySQL을 설치할 필요가 없어서 CI의 `backend-mysql` 작업이 이 방식으로 돕니다. 테스트 컨텍스트가 여러 개라 `max_connections`를 400으로 올린 설정(`src/test/resources/mysql-conf`)을 씁니다.
 
 ## 4. 부하 테스트
@@ -87,8 +87,8 @@ cd ../frontend && npm run build                         # 타입 체크 + 빌드
 
 ```bash
 # 개발 도구 켜기 (기본값은 꺼짐. 운영에서는 켜지 않습니다: NAIVE 전략은 초과 판매가 납니다)
-FLASHDEAL_DEV_TOOLS_ENABLED=true ./gradlew bootRun            # Git Bash
-$env:FLASHDEAL_DEV_TOOLS_ENABLED = "true"; .\gradlew bootRun    # PowerShell
+NEEDSSHOP_DEV_TOOLS_ENABLED=true ./gradlew bootRun            # Git Bash
+$env:NEEDSSHOP_DEV_TOOLS_ENABLED = "true"; .\gradlew bootRun    # PowerShell
 
 # 부하 테스트
 node loadtest/order-rush.mjs --all --stock 2000 --requests 2000   # 모든 요청이 재고 행을 두고 경합 (전략 비교용)
@@ -110,33 +110,33 @@ node loadtest/order-rush.mjs --strategy ATOMIC_UPDATE --requests 5000 --concurre
 - 측정 편차가 큽니다 (JVM 워밍업, PC 상태). 전략을 비교할 때는 같은 조건으로 **최소 2번** 돌리고 일관된 차이만 봅니다.
 - 실행할 때마다 `load_` 회원 200명과 주문 수천 건이 쌓입니다. 깨끗한 상태에서 다시 재려면 아래처럼 스키마를 지우고 앱을 다시 띄웁니다.
   ```bash
-  mysql -uroot -p -e "drop database flashdeal; drop database flashdeal_test;"
+  mysql -uroot -p -e "drop database needs_shop; drop database needs_shop_test;"
   ```
 
 ## 5. 주요 설정 (`backend/src/main/resources/application.yml`)
 
 | 키 | 기본값 | 설명 |
 |---|---|---|
-| `flashdeal.stock.strategy` | ATOMIC_UPDATE | 재고 차감 전략 (개발 도구를 켜면 실행 중에도 API로 변경 가능) |
-| `flashdeal.dev-tools.enabled` | false | 부하 테스트용 재고 전략 전환 API를 엽니다 (`FLASHDEAL_DEV_TOOLS_ENABLED`). 운영에서는 false |
-| `flashdeal.order.reservation-ttl` | 10m | 결제 대기 재고 선점 시간 |
-| `flashdeal.pg.base-url` | (빈 값 = 내장 Mock PG) | 실제 PG URL (`PG_BASE_URL`) |
-| `flashdeal.pg.connect-timeout` / `read-timeout` | 1s / 2s | PG 타임아웃 |
-| `flashdeal.pg.max-attempts` | 3 | PG 승인 재시도 횟수 (200ms, 400ms 간격) |
-| `flashdeal.payment.reconcile-grace` | 5s | 대사 대상이 되기까지 기다리는 시간 |
-| `flashdeal.ai.api-key` | `GEMINI_API_KEY` | 없으면 AI 태그·등록 추천 정리를 건너뜀 (검색은 그대로) |
-| `flashdeal.ai.model` | gemini-3.5-flash-lite | 태그, 등록 추천에 쓰는 모델 |
-| `flashdeal.ai.timeout` | 20s | 호출 한 번의 시간 제한. 성공한 호출은 실측 0.8~11초. 모델 과부하(5xx)면 2초·4초 뒤 최대 3번까지 다시 시도하되 10초가 지나면 그만 (429·시간 초과는 다시 시도하지 않음) |
-| `flashdeal.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
-| `flashdeal.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
-| `flashdeal.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |
-| `flashdeal.scheduler.expiry-interval` / `reconcile-interval` | 5s / 10s | 주문 만료, 결제 대사 주기. 서버가 여러 대여도 한 서버에서만 실행 (ShedLock) |
-| `flashdeal.scheduler.tagging-interval` | 1m | 태그 없는 상품에 AI 태그를 붙이는 주기 (한 번에 10개, 한 서버에서만) |
-| `flashdeal.scheduler.demand-cron` | `0 0 4 * * *` | 못 찾은 검색어 AI 정리 (하루 한 번, 실패하면 30초 간격으로 세 번까지) |
-| `flashdeal.redis.enabled` | false | 서버를 여러 대 띄울 때 켬 (`FLASHDEAL_REDIS_ENABLED`, 서버 환경 compose에서 true). 사용자 캐시 무효화 전파, 요청 한도 공유 카운터 |
+| `needsshop.stock.strategy` | ATOMIC_UPDATE | 재고 차감 전략 (개발 도구를 켜면 실행 중에도 API로 변경 가능) |
+| `needsshop.dev-tools.enabled` | false | 부하 테스트용 재고 전략 전환 API를 엽니다 (`NEEDSSHOP_DEV_TOOLS_ENABLED`). 운영에서는 false |
+| `needsshop.order.reservation-ttl` | 10m | 결제 대기 재고 선점 시간 |
+| `needsshop.pg.base-url` | (빈 값 = 내장 Mock PG) | 실제 PG URL (`PG_BASE_URL`) |
+| `needsshop.pg.connect-timeout` / `read-timeout` | 1s / 2s | PG 타임아웃 |
+| `needsshop.pg.max-attempts` | 3 | PG 승인 재시도 횟수 (200ms, 400ms 간격) |
+| `needsshop.payment.reconcile-grace` | 5s | 대사 대상이 되기까지 기다리는 시간 |
+| `needsshop.ai.api-key` | `GEMINI_API_KEY` | 없으면 AI 태그·등록 추천 정리를 건너뜀 (검색은 그대로) |
+| `needsshop.ai.model` | gemini-3.5-flash-lite | 태그, 등록 추천에 쓰는 모델 |
+| `needsshop.ai.timeout` | 20s | 호출 한 번의 시간 제한. 성공한 호출은 실측 0.8~11초. 모델 과부하(5xx)면 2초·4초 뒤 최대 3번까지 다시 시도하되 10초가 지나면 그만 (429·시간 초과는 다시 시도하지 않음) |
+| `needsshop.jwt.secret` | 데모 키 | 운영에서는 `JWT_SECRET`으로 반드시 교체 |
+| `needsshop.seed.admin-password` | admin | 시드 관리자 비밀번호 (`ADMIN_PASSWORD`). prod는 12자 이상 필수 |
+| `needsshop.seed.demo-users` | true | 데모 회원(user1, user2) 생성. prod는 false |
+| `needsshop.scheduler.expiry-interval` / `reconcile-interval` | 5s / 10s | 주문 만료, 결제 대사 주기. 서버가 여러 대여도 한 서버에서만 실행 (ShedLock) |
+| `needsshop.scheduler.tagging-interval` | 1m | 태그 없는 상품에 AI 태그를 붙이는 주기 (한 번에 10개, 한 서버에서만) |
+| `needsshop.scheduler.demand-cron` | `0 0 4 * * *` | 못 찾은 검색어 AI 정리 (하루 한 번, 실패하면 30초 간격으로 세 번까지) |
+| `needsshop.redis.enabled` | false | 서버를 여러 대 띄울 때 켬 (`NEEDSSHOP_REDIS_ENABLED`, 서버 환경 compose에서 true). 사용자 캐시 무효화 전파, 요청 한도 공유 카운터 |
 | `spring.data.redis.host` / `timeout` | localhost / 500ms | Redis 주소(`REDIS_HOST`). 응답이 늦으면 요청 한도는 허용, 캐시 무효화는 TTL(30초)로 물러남 |
-| `flashdeal.rate-limit.enabled` | false | 요청 한도. prod에서 켬 (부하 테스트는 한 IP에서 수천 건을 보내므로 로컬에서는 끔) |
-| `flashdeal.rate-limit.login-per-minute` / `signup-per-minute` / `order-per-minute` | 20 / 10 / 30 | 로그인·가입은 IP당, 주문은 사용자당. 넘으면 429 + `Retry-After` |
+| `needsshop.rate-limit.enabled` | false | 요청 한도. prod에서 켬 (부하 테스트는 한 IP에서 수천 건을 보내므로 로컬에서는 끔) |
+| `needsshop.rate-limit.login-per-minute` / `signup-per-minute` / `order-per-minute` | 20 / 10 / 30 | 로그인·가입은 IP당, 주문은 사용자당. 넘으면 429 + `Retry-After` |
 | `spring.profiles.active` | (없음 = 로컬) | `mysql`: MySQL로 실행, `prod`: 운영 (MySQL + 안전장치 + JSON 로그, [서버 환경 가이드](deploy.md)) |
 | `spring.jpa.hibernate.ddl-auto` | validate | 스키마는 Flyway가 관리 |
 | `spring.jpa.properties.hibernate.default_batch_fetch_size` | 100 | N+1 해결 |
@@ -197,7 +197,7 @@ curl -G localhost:8080/api/products/search --data-urlencode 'q=5만원 이하 �
 
 | 확인하고 싶은 것 | 실행 | 기대 결과 |
 |---|---|---|
-| 락이 없으면 초과 판매가 나고, 나머지 전략은 0건 | `./gradlew test --tests "*StockConcurrencyTest"` | NAIVE만 초과 판매. 비교표는 `backend/build/test-results/test/TEST-com.flashdeal.order.StockConcurrencyTest.xml`의 system-out |
+| 락이 없으면 초과 판매가 나고, 나머지 전략은 0건 | `./gradlew test --tests "*StockConcurrencyTest"` | NAIVE만 초과 판매. 비교표는 `backend/build/test-results/test/TEST-com.needsshop.order.StockConcurrencyTest.xml`의 system-out |
 | 따닥 클릭: 같은 키로 20건 동시 주문 | `./gradlew test --tests "*OrderApiTest"` | 주문 1건 |
 | 1인 구매 제한 (같은 사용자의 동시 주문 포함) | `./gradlew test --tests "*PurchaseRuleTest"` | 한도만큼만 성공 |
 | 결제 장애 4종 (카드 거절, PG 응답 지연, PG 5xx, 승인 후 우리 DB 장애) | `./gradlew test --tests "*PaymentFailureScenarioTest"` | 이중 결제 없음, 대사로 PAID 복구, 정합성 불일치 0건 |

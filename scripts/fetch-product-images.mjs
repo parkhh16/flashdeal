@@ -19,7 +19,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const IMG_DIR = join(ROOT, 'frontend/public/images/products')
 const MANIFEST = join(ROOT, 'backend/src/main/resources/seed/product-images.json')
 const CREDITS = join(ROOT, 'IMAGE_CREDITS.md')
-const UA = { 'User-Agent': 'FlashDealPortfolio/1.0 (https://github.com; portfolio demo)' }
+const UA = { 'User-Agent': 'NeedsShopPortfolio/1.0 (https://github.com; portfolio demo)' }
 const ALLOWED = /^(CC0|CC BY(-SA)? \d\.\d|Public domain)/i
 
 const PINNED = {

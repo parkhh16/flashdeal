@@ -29,7 +29,7 @@
 
 ## 관련 코드
 
-- [`OrderExpiryScheduler`](../../backend/src/main/java/com/flashdeal/order/OrderExpiryScheduler.java): 미결제 주문 만료 + 재고 복구
-- [`Order`](../../backend/src/main/java/com/flashdeal/order/Order.java), [`OrderStatus`](../../backend/src/main/java/com/flashdeal/order/OrderStatus.java): `@Version`, 상태 머신
+- [`OrderExpiryScheduler`](../../backend/src/main/java/com/needsshop/order/OrderExpiryScheduler.java): 미결제 주문 만료 + 재고 복구
+- [`Order`](../../backend/src/main/java/com/needsshop/order/Order.java), [`OrderStatus`](../../backend/src/main/java/com/needsshop/order/OrderStatus.java): `@Version`, 상태 머신
 - [`V5__remove_time_limited_deals.sql`](../../backend/src/main/resources/db/migration/V5__remove_time_limited_deals.sql): 판매 기간·한정 수량 컬럼 제거
 - 테스트: `OrderExpiryTest`, `OrderStatusTest`

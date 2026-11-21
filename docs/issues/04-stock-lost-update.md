@@ -59,7 +59,7 @@ UPDATE product SET stock = stock + :delta WHERE id = :id AND stock + :delta >= 0
 
 ## 관련 코드
 
-- [`Product`](../../backend/src/main/java/com/flashdeal/product/Product.java): `@DynamicUpdate`
-- [`AdminStockService`](../../backend/src/main/java/com/flashdeal/admin/AdminStockService.java): 증감 방식 재고 조정
-- [`ProductRepository`](../../backend/src/main/java/com/flashdeal/product/ProductRepository.java): `adjustStock`
+- [`Product`](../../backend/src/main/java/com/needsshop/product/Product.java): `@DynamicUpdate`
+- [`AdminStockService`](../../backend/src/main/java/com/needsshop/admin/AdminStockService.java): 증감 방식 재고 조정
+- [`ProductRepository`](../../backend/src/main/java/com/needsshop/product/ProductRepository.java): `adjustStock`
 - 테스트: `AdminFeaturesTest` (`adminEditDoesNotOverwriteStock`, `stockAdjustmentIsDelta`)

@@ -17,7 +17,7 @@
 
 ## 해결: 전략 4가지를 구현해서 같은 조건으로 비교
 
-"비관적 락을 쓰면 된다"로 끝내지 않고, 대표적인 방법 네 가지를 모두 구현해서 **같은 부하에서 비교**했습니다. `StockService`에 전략 패턴으로 넣고, 개발 도구 플래그(`flashdeal.dev-tools.enabled=true`)를 켠 서버에서는 API(`PUT /api/admin/stock-strategy/{type}`)로 서버를 재시작하지 않고 바꿀 수 있게 했습니다. 기본값은 꺼짐입니다. 운영에서 열려 있으면 관리자가 초과 판매가 나는 NAIVE로 바꿀 수 있기 때문입니다. 동시성 테스트(`StockConcurrencyTest`)는 이 API 없이 서비스를 직접 호출합니다.
+"비관적 락을 쓰면 된다"로 끝내지 않고, 대표적인 방법 네 가지를 모두 구현해서 **같은 부하에서 비교**했습니다. `StockService`에 전략 패턴으로 넣고, 개발 도구 플래그(`needsshop.dev-tools.enabled=true`)를 켠 서버에서는 API(`PUT /api/admin/stock-strategy/{type}`)로 서버를 재시작하지 않고 바꿀 수 있게 했습니다. 기본값은 꺼짐입니다. 운영에서 열려 있으면 관리자가 초과 판매가 나는 NAIVE로 바꿀 수 있기 때문입니다. 동시성 테스트(`StockConcurrencyTest`)는 이 API 없이 서비스를 직접 호출합니다.
 
 | 전략 | 구현 | 특징 |
 |---|---|---|
@@ -86,8 +86,8 @@ DB가 한계에 도달한다면, 다음 단계는 락을 더하는 것이 아니
 
 ## 관련 코드
 
-- [`StockService`](../../backend/src/main/java/com/flashdeal/product/stock/StockService.java): 전략 4가지
-- [`ProductRepository`](../../backend/src/main/java/com/flashdeal/product/ProductRepository.java): `decreaseIfEnough`, `decreaseIfVersionMatches`, `findByIdForUpdate`
-- [`OrderFacade`](../../backend/src/main/java/com/flashdeal/order/OrderFacade.java): 낙관적 락 재시도 (트랜잭션 밖)
+- [`StockService`](../../backend/src/main/java/com/needsshop/product/stock/StockService.java): 전략 4가지
+- [`ProductRepository`](../../backend/src/main/java/com/needsshop/product/ProductRepository.java): `decreaseIfEnough`, `decreaseIfVersionMatches`, `findByIdForUpdate`
+- [`OrderFacade`](../../backend/src/main/java/com/needsshop/order/OrderFacade.java): 낙관적 락 재시도 (트랜잭션 밖)
 - [`loadtest/order-rush.mjs`](../../loadtest/order-rush.mjs): HTTP 부하 테스트
 - 테스트: `StockConcurrencyTest`

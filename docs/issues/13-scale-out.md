@@ -36,7 +36,7 @@ status = SUSPENDED (아직 커밋 전)
 
 ### 1. 스케줄러는 한 서버에서만: ShedLock (DB 테이블 락)
 
-두 스케줄러의 진입점을 [`ClusterLock.runExclusively`](../../backend/src/main/java/com/flashdeal/common/cluster/ClusterLock.java)로 감쌌습니다. 락을 얻은 서버만 실행하고, 못 얻은 서버는 기다리지 않고 이번 주기를 건너뜁니다. 주기 작업이라 다음 주기에 다시 시도하면 됩니다.
+두 스케줄러의 진입점을 [`ClusterLock.runExclusively`](../../backend/src/main/java/com/needsshop/common/cluster/ClusterLock.java)로 감쌌습니다. 락을 얻은 서버만 실행하고, 못 얻은 서버는 기다리지 않고 이번 주기를 건너뜁니다. 주기 작업이라 다음 주기에 다시 시도하면 됩니다.
 
 - **락은 DB에 둡니다** (`shedlock` 테이블, V6). 모든 서버가 이미 같은 DB를 쓰고 있어서 인프라가 늘지 않습니다. 결제를 복구하는 대사 배치가 Redis에 의존하면, Redis가 죽었을 때 돈과 주문이 어긋난 채로 남습니다.
 - **만료 판단은 DB 시각으로 합니다** (`usingDbTime()`). 서버마다 시계가 조금씩 달라도 판단 기준이 하나입니다.
@@ -47,17 +47,17 @@ status = SUSPENDED (아직 커밋 전)
 
 ### 2. 캐시 무효화: 커밋한 뒤에, 모든 서버에서
 
-[`UserAuthCache.evict`](../../backend/src/main/java/com/flashdeal/auth/UserAuthCache.java)는 트랜잭션 안에서 불리면 `TransactionSynchronization.afterCommit`에 삭제를 예약합니다. 커밋된 뒤에 지우므로, 그 뒤의 조회는 새 상태만 읽습니다.
+[`UserAuthCache.evict`](../../backend/src/main/java/com/needsshop/auth/UserAuthCache.java)는 트랜잭션 안에서 불리면 `TransactionSynchronization.afterCommit`에 삭제를 예약합니다. 커밋된 뒤에 지우므로, 그 뒤의 조회는 새 상태만 읽습니다.
 
 다른 서버에는 **Redis Pub/Sub**으로 알립니다. 상태를 바꾼 서버가 채널에 userId를 보내면 모든 서버가 자기 메모리 캐시에서 그 사용자를 지웁니다.
 
 - **캐시 자체는 계속 서버 메모리에 둡니다.** 캐시를 Redis로 옮기면 모든 요청의 인증이 네트워크를 타고, Redis가 죽으면 인증도 같이 죽습니다. 자주 일어나는 조회는 로컬에서 처리하고, 드물게 일어나는 무효화만 전파합니다.
 - **전파에 실패해도** 상태 변경은 이미 커밋됐습니다. 메시지를 놓친 서버도 TTL(30초) 안에 따라옵니다. 오래된 상태가 남는 시간에 상한이 있습니다.
-- Redis를 끈 환경(로컬, 테스트, 서버 한 대)에서는 알릴 곳이 없으므로 아무것도 하지 않습니다 (`flashdeal.redis.enabled`).
+- Redis를 끈 환경(로컬, 테스트, 서버 한 대)에서는 알릴 곳이 없으므로 아무것도 하지 않습니다 (`needsshop.redis.enabled`).
 
 ### 3. 요청 한도: 공유 카운터, Redis 장애 시에는 허용
 
-[`RateLimitFilter`](../../backend/src/main/java/com/flashdeal/common/ratelimit/RateLimitFilter.java)가 남용을 막습니다. 넘으면 `429 Too Many Requests`, `Retry-After` 헤더, 에러 코드 `C006`을 돌려줍니다.
+[`RateLimitFilter`](../../backend/src/main/java/com/needsshop/common/ratelimit/RateLimitFilter.java)가 남용을 막습니다. 넘으면 `429 Too Many Requests`, `Retry-After` 헤더, 에러 코드 `C006`을 돌려줍니다.
 
 | 대상 | 기준 | 한도 (분당) | 막는 것 |
 |---|---|---|---|
@@ -97,7 +97,7 @@ status = SUSPENDED (아직 커밋 전)
 
 ## 관련 코드
 
-- [`ClusterLock`](../../backend/src/main/java/com/flashdeal/common/cluster/ClusterLock.java), [`ClusterLockConfig`](../../backend/src/main/java/com/flashdeal/common/cluster/ClusterLockConfig.java), [`V6__shedlock.sql`](../../backend/src/main/resources/db/migration/V6__shedlock.sql), [`OrderExpiryScheduler`](../../backend/src/main/java/com/flashdeal/order/OrderExpiryScheduler.java), [`PaymentReconciler`](../../backend/src/main/java/com/flashdeal/payment/PaymentReconciler.java)
-- [`UserAuthCache`](../../backend/src/main/java/com/flashdeal/auth/UserAuthCache.java), [`RedisClusterConfig`](../../backend/src/main/java/com/flashdeal/common/cluster/RedisClusterConfig.java), [`LocalOnlyClusterConfig`](../../backend/src/main/java/com/flashdeal/common/cluster/LocalOnlyClusterConfig.java)
-- [`RateLimitFilter`](../../backend/src/main/java/com/flashdeal/common/ratelimit/RateLimitFilter.java), [`RedisRateLimiter`](../../backend/src/main/java/com/flashdeal/common/ratelimit/RedisRateLimiter.java), [`InMemoryRateLimiter`](../../backend/src/main/java/com/flashdeal/common/ratelimit/InMemoryRateLimiter.java)
+- [`ClusterLock`](../../backend/src/main/java/com/needsshop/common/cluster/ClusterLock.java), [`ClusterLockConfig`](../../backend/src/main/java/com/needsshop/common/cluster/ClusterLockConfig.java), [`V6__shedlock.sql`](../../backend/src/main/resources/db/migration/V6__shedlock.sql), [`OrderExpiryScheduler`](../../backend/src/main/java/com/needsshop/order/OrderExpiryScheduler.java), [`PaymentReconciler`](../../backend/src/main/java/com/needsshop/payment/PaymentReconciler.java)
+- [`UserAuthCache`](../../backend/src/main/java/com/needsshop/auth/UserAuthCache.java), [`RedisClusterConfig`](../../backend/src/main/java/com/needsshop/common/cluster/RedisClusterConfig.java), [`LocalOnlyClusterConfig`](../../backend/src/main/java/com/needsshop/common/cluster/LocalOnlyClusterConfig.java)
+- [`RateLimitFilter`](../../backend/src/main/java/com/needsshop/common/ratelimit/RateLimitFilter.java), [`RedisRateLimiter`](../../backend/src/main/java/com/needsshop/common/ratelimit/RedisRateLimiter.java), [`InMemoryRateLimiter`](../../backend/src/main/java/com/needsshop/common/ratelimit/InMemoryRateLimiter.java)
 - [`deploy/docker-compose.yml`](../../deploy/docker-compose.yml), [`frontend/Caddyfile`](../../frontend/Caddyfile)

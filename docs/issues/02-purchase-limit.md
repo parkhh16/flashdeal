@@ -49,7 +49,7 @@ MySQL 기본 격리 수준인 `REPEATABLE READ`는 트랜잭션의 **첫 번째 
 
 ## 관련 코드
 
-- [`OrderService`](../../backend/src/main/java/com/flashdeal/order/OrderService.java): `create`(READ COMMITTED), `validatePurchaseRules`
-- [`PurchaseRule`](../../backend/src/main/java/com/flashdeal/product/PurchaseRule.java): 검증용 DTO 프로젝션
-- [`UserRepository`](../../backend/src/main/java/com/flashdeal/auth/UserRepository.java): `findByIdForUpdate`
+- [`OrderService`](../../backend/src/main/java/com/needsshop/order/OrderService.java): `create`(READ COMMITTED), `validatePurchaseRules`
+- [`PurchaseRule`](../../backend/src/main/java/com/needsshop/product/PurchaseRule.java): 검증용 DTO 프로젝션
+- [`UserRepository`](../../backend/src/main/java/com/needsshop/auth/UserRepository.java): `findByIdForUpdate`
 - 테스트: `PurchaseRuleTest` (`./gradlew test -Pdb=mysql`로 MySQL에서 실행)
