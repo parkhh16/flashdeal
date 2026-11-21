@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "shots": "node e2e/shots.mjs",
-    "e2e": "node e2e/e2e.mjs"
+    "e2e": "node e2e/e2e.mjs",
+    "states": "node e2e/states.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
