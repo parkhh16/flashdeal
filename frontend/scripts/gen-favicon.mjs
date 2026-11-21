@@ -16,7 +16,7 @@ if (!accent) throw new Error('src/index.css에서 --accent 색을 찾지 못했�
 // 16px 탭 아이콘에서도 읽히도록 헤더 로고보다 선을 굵게, 도형은 칸을 더 채우게 한다
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <rect width="24" height="24" rx="6" fill="${accent}"/>
-  <g transform="translate(3.1 3.1) scale(.74)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${inner}</g>
+  <g transform="translate(1.7 1.5) scale(.86)" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${inner}</g>
 </svg>
 `
 writeFileSync(new URL('../public/favicon.svg', import.meta.url), svg)

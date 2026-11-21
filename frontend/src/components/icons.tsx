@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { LOGO_INNER } from '../logo'
+import { LOGO_INNER, LOGO_STROKE } from '../logo'
 
 /** 인라인 SVG 아이콘. 24x24 viewBox, currentColor 선, 굵기 1.75, 장식용이라 aria-hidden */
 function Icon({ children, className }: { children: ReactNode; className?: string }) {
@@ -64,7 +64,7 @@ export function CategoryIcon({ code, className }: { code: string | null | undefi
 export function LogoMark() {
   return (
     <span className="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={LOGO_STROKE} strokeLinecap="round" strokeLinejoin="round"
            aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: LOGO_INNER }} />
     </span>
   )
