@@ -1,6 +1,7 @@
 ---
 name: visual-reviewer
 description: 니즈샵 화면을 스크린샷으로 보고 docs/design/의 수용 기준과 공통 체크리스트로 채점한다. 고정 화면 목록(모바일/PC x 라이트/다크)을 보며, 파일을 수정하지 않고 점수와 지적만 낸다.
+model: haiku
 tools: Read, Grep, Glob, Bash
 ---
 

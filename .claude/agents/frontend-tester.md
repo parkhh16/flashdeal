@@ -1,6 +1,7 @@
 ---
 name: frontend-tester
 description: 니즈샵 프론트 검증을 맡는다. 빌드, 타입 체크, 린트, 브라우저 콘솔 에러, 로그인/주문/관리자 흐름 E2E(Playwright), 접근성(axe)을 실행하고 결과를 정리한다. frontend/e2e 아래 테스트 코드만 수정하고 화면 코드는 고치지 않는다.
+model: haiku
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: frontend-reviewer
 description: 니즈샵 프론트 변경을 리뷰한다. 의견이 아니라 설계 규칙 위반과 회귀를 본다. 결제 중복 클릭, PAYING/UNKNOWN 표시, 부가 기능 실패 격리, API 계약 변경, 범위 밖 파일 수정을 점검한다. 파일을 수정하지 않는다.
+model: haiku
 tools: Read, Grep, Glob, Bash
 ---
 
