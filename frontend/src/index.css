@@ -182,8 +182,12 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-siz
 .header-nav a.header-cta { border-radius: var(--radius-pill); padding: 8px 16px; }
 .header-nav a.header-cta:hover { background: var(--accent-hover); }
 .account { position: relative; }
+.account-trigger { display: inline-flex; align-items: center; gap: 2px; min-height: 40px; padding: 0 4px 0 0; background: none; border: none; border-radius: var(--radius-pill); color: var(--muted); }
+.account-trigger:hover:not(:disabled) { background: var(--surface-2); }
+.account-chevron { width: 16px; height: 16px; transition: transform var(--dur-1, 120ms) var(--ease, ease); }
+.account-trigger[aria-expanded="true"] .account-chevron { transform: rotate(180deg); }
 .avatar { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent-weak); color: var(--accent-text); border: 1px solid transparent; font-weight: var(--fw-bold); font-size: 15px; }
-.avatar:hover:not(:disabled) { background: var(--accent-weak); border-color: var(--accent-text); }
+.account-trigger:hover .avatar { border-color: var(--accent-text); }
 .account-menu { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-2); min-width: 200px; padding: 6px; display: flex; flex-direction: column; }
 .account-menu button { background: none; border: none; color: var(--text); text-align: left; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
 .account-menu button:hover { background: var(--surface-2); }
@@ -389,7 +393,8 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--bord
   .header-inner > .brand, .header-inner > .header-nav { min-height: var(--header-row); }
   .header-search { order: 3; flex: 0 0 100%; max-width: none; height: var(--search-row); margin: 0; padding: var(--space-1) 0; }
   .hs-field { height: 100%; }
-  .header-nav { margin-left: auto; }
+  /* .header-search + .header-nav { margin-left: 0 }(우선순위 높음)이 이 규칙을 이겨서 아바타가 로고 옆에 붙었다 */
+  .header-nav, .header-search + .header-nav { margin-left: auto; }
   .avatar { width: 40px; height: 40px; }
   .pc-only { display: none !important; }
   .icon-btn { min-width: 40px; min-height: 40px; }
