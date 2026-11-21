@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- 로고·히어로 후보 비교판. 개발 서버(npm run dev -- --host 127.0.0.1)가 떠 있어야 앱의 색 체계(index.css)를 불러와 같은 모습으로 보인다 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>니즈샵 후보 비교</title>
+<link rel="stylesheet" href="http://127.0.0.1:5173/src/index.css?direct">
+<style>
+  body { padding: 28px 32px 40px; max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 32px 0 12px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .logos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .cand { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .cand .label { padding: 10px 14px; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border); }
+  .cand .label small { font-weight: 500; color: var(--muted); display: block; margin-top: 2px; }
+  .row { padding: 22px 16px; display: flex; align-items: center; gap: 12px; }
+  .row.dark { background: #0e0d0b; color: #fbf7f1; }
+  .row.dark .logo-mark { background: #ff8a3d; color: #1a1612; }
+  .big { display: flex; gap: 10px; padding: 14px 16px 18px; align-items: center; }
+  .big .logo-mark { width: 56px; height: 56px; border-radius: 14px; }
+  .big .logo-mark svg { width: 34px; height: 34px; }
+  .big .logo-mark.sm { width: 32px; height: 32px; border-radius: 8px; }
+  .big .logo-mark.sm svg { width: 20px; height: 20px; }
+  .heros { display: flex; flex-direction: column; gap: 22px; }
+  .heros .tag { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+  .heros .hero { margin-bottom: 0; min-height: 220px; }
+</style>
+</head>
+<body>
+<h1>니즈샵 후보 비교</h1>
+<p class="sub">고르신 번호를 알려 주시면 그대로 적용합니다. 아이콘은 이 앱의 다른 아이콘과 같은 선 굵기(1.75)로 그렸습니다.</p>
+
+<h2>① 로고 (라이트 / 다크 / 확대)</h2>
+<div class="logos">
+  <div class="cand"><div class="label">A. 번개 (현재)<small>FlashDeal 때의 모양. 속도·선착순</small></div>
+    <div class="row"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/></svg></span>니즈샵</span></div>
+    <div class="row dark"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/></svg></span>니즈샵</span></div>
+    <div class="big"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/></svg></span><span class="logo-mark sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/></svg></span></div></div>
+
+  <div class="cand"><div class="label">B. 쇼핑백<small>가장 알아보기 쉬움. 쇼핑몰의 기본 이미지</small></div>
+    <div class="row"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5h11l-.9 10.5H7.4L6.5 8.5Z"/><path d="M9.5 8.5v-1a2.5 2.5 0 0 1 5 0v1"/></svg></span>니즈샵</span></div>
+    <div class="row dark"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5h11l-.9 10.5H7.4L6.5 8.5Z"/><path d="M9.5 8.5v-1a2.5 2.5 0 0 1 5 0v1"/></svg></span>니즈샵</span></div>
+    <div class="big"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5h11l-.9 10.5H7.4L6.5 8.5Z"/><path d="M9.5 8.5v-1a2.5 2.5 0 0 1 5 0v1"/></svg></span><span class="logo-mark sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5h11l-.9 10.5H7.4L6.5 8.5Z"/><path d="M9.5 8.5v-1a2.5 2.5 0 0 1 5 0v1"/></svg></span></div></div>
+
+  <div class="cand"><div class="label">C. 돋보기 + 체크<small>"니즈(찾는 것)"를 담음. 이 프로젝트의 검색·등록 추천과 어울림</small></div>
+    <div class="row"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/><path d="m8.4 11 1.8 1.8 3.4-3.6"/></svg></span>니즈샵</span></div>
+    <div class="row dark"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/><path d="m8.4 11 1.8 1.8 3.4-3.6"/></svg></span>니즈샵</span></div>
+    <div class="big"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/><path d="m8.4 11 1.8 1.8 3.4-3.6"/></svg></span><span class="logo-mark sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/><path d="m8.4 11 1.8 1.8 3.4-3.6"/></svg></span></div></div>
+
+  <div class="cand"><div class="label">D. "니" 글자<small>가장 단순하고 브랜드다움. 작게 써도 또렷함</small></div>
+    <div class="row"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 6v10.5H14"/><path d="M17.5 5v14"/></svg></span>니즈샵</span></div>
+    <div class="row dark"><span class="brand"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 6v10.5H14"/><path d="M17.5 5v14"/></svg></span>니즈샵</span></div>
+    <div class="big"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 6v10.5H14"/><path d="M17.5 5v14"/></svg></span><span class="logo-mark sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 6v10.5H14"/><path d="M17.5 5v14"/></svg></span></div></div>
+</div>
+
+<h2>② 홈 맨 위 배너 톤 (라이트 모드 기준)</h2>
+<p class="sub">지금은 어두운 갈색 배너가 베이지 배경 위에 큰 덩어리로 떠서 라이트 모드에서 무겁게 느껴질 수 있습니다.</p>
+<div class="heros">
+  <div><p class="tag">1. 어두운 배너 (현재). 대비가 강해 시선을 끌지만 무거움</p>
+    <section class="hero"><span class="hero-eyebrow">수량 한정 · 선착순 판매</span><h1>정해진 수량만큼만,<br>좋은 물건을 골랐어요</h1><p>재고가 모두 팔리면 판매가 끝나요. 남은 수량은 상품마다 그대로 보여드려요.</p></section></div>
+  <div><p class="tag">2. 연한 강조색 배너. 따뜻하고 가벼움, 브랜드 색이 살아남</p>
+    <section class="hero" style="--hero-bg:#fff1e8; --hero-fg:#16130f; --hero-muted:#5c554b; --hero-accent:#9a3412; --hero-chip:rgb(22 19 15 / .07); border:1px solid #f3d9c7"><span class="hero-eyebrow">수량 한정 · 선착순 판매</span><h1>정해진 수량만큼만,<br>좋은 물건을 골랐어요</h1><p>재고가 모두 팔리면 판매가 끝나요. 남은 수량은 상품마다 그대로 보여드려요.</p></section></div>
+  <div><p class="tag">3. 연한 중립 배너 (애플식). 가장 차분함, 상품 사진이 주인공</p>
+    <section class="hero" style="--hero-bg:#f2eee8; --hero-fg:#16130f; --hero-muted:#5c554b; --hero-accent:#9a3412; --hero-chip:rgb(22 19 15 / .07)"><span class="hero-eyebrow">수량 한정 · 선착순 판매</span><h1>정해진 수량만큼만,<br>좋은 물건을 골랐어요</h1><p>재고가 모두 팔리면 판매가 끝나요. 남은 수량은 상품마다 그대로 보여드려요.</p></section></div>
+</div>
+</body>
+</html>
