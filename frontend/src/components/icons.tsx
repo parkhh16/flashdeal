@@ -66,3 +66,7 @@ export function CategoryIcon({ code, className }: { code: string | null | undefi
 export function LogoMark() {
   return <span className="logo-mark"><BoltIcon /></span>
 }
+
+export const ChevronDownIcon = ({ className }: { className?: string }) => (
+  <Icon className={className}><path d="m6 9 6 6 6-6" /></Icon>
+)
