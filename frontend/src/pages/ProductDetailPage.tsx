@@ -60,13 +60,19 @@ export function ProductDetailPage() {
     : soldOut ? '품절'
       : ordering ? '주문 중…' : '구매하기'
 
-  /** 한 번의 클릭 = 멱등 키 하나. 요청 중에는 버튼과 ref로 이중 제출을 막는다 */
+  /**
+   * 한 번의 클릭 = 멱등 키 하나. 요청 중에는 버튼과 ref로 이중 제출을 막는다.
+   * 주문이 접수된 뒤에는 잠금을 풀지 않는다 (화면이 내 활동으로 넘어가며 이 컴포넌트가 사라질 때까지).
+   * 풀면 응답과 화면 전환 사이의 짧은 틈에 두 번째 클릭이 새 멱등 키로 들어와 서버가 중복을 알아보지 못하고 주문이 한 번 더 생긴다.
+   */
   const buy = async () => {
     if (inFlight.current || blocked || !session) return
     inFlight.current = true
     setOrdering(true)
+    let accepted = false
     try {
       await api.createOrder(product.id, quantity, crypto.randomUUID())
+      accepted = true
       toast('주문이 접수되었어요. 10분 안에 결제를 완료해주세요.', 'success')
       bumpOrders()
       navigate('/me')
@@ -74,8 +80,10 @@ export function ProductDetailPage() {
       fail(e)
       load()
     } finally {
-      inFlight.current = false
-      setOrdering(false)
+      if (!accepted) {
+        inFlight.current = false
+        setOrdering(false)
+      }
     }
   }
 
